@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Enrollment Requests{% endblock %}
+
+{% block extra_css %}
+<style>
+    .request-card {
+        border-left: 4px solid #ffc107;
+        margin-bottom: 15px;
+        transition: all 0.3s;
+    }
+    .request-card:hover {
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .request-card.approved {
+        border-left-color: #28a745;
+    }
+    .request-card.rejected {
+        border-left-color: #dc3545;
+    }
+    .request-card.pending {
+        border-left-color: #ffc107;
+    }
+    .status-badge {
+        padding: 3px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .status-pending { background: #ffc107; color: #212529; }
+    .status-approved { background: #28a745; color: white; }
+    .status-rejected { background: #dc3545; color: white; }
+    .request-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .filter-tabs {
+        margin-bottom: 20px;
+    }
+    .filter-tabs .btn {
+        margin-right: 10px;
+    }
+    .filter-tabs .btn.active {
+        background: #667eea;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-user-plus"></i> Enrollment Requests</h2>
+                <p class="text-muted">Approve or reject student enrollment requests</p>
+            </div>
+            <div>
+                <span class="badge bg-warning text-dark p-2">
+                    <i class="fas fa-clock"></i> {{ pending_requests|length }} Pending
+                </span>
+            </div>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Stats -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body text-center">
+                        <h3>{{ pending_requests|length }}</h3>
+                        <p class="mb-0">Pending</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h3>{{ approved_requests|length }}</h3>
+                        <p class="mb-0">Approved</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center">
+                        <h3>{{ rejected_requests|length }}</h3>
+                        <p class="mb-0">Rejected</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h3>{{ total }}</h3>
+                        <p class="mb-0">Total Requests</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+            <button class="btn btn-outline-secondary active" data-filter="all">All</button>
+            <button class="btn btn-outline-warning" data-filter="pending">Pending</button>
+            <button class="btn btn-outline-success" data-filter="approved">Approved</button>
+            <button class="btn btn-outline-danger" data-filter="rejected">Rejected</button>
+        </div>
+
+        <!-- Requests List -->
+        {% if pending_requests or approved_requests or rejected_requests %}
+            <!-- Pending Requests -->
+            {% if pending_requests %}
+            <h5 class="mb-3"><span class="badge bg-warning">Pending</span> Requests to Review</h5>
+            {% for request in pending_requests %}
+            <div class="card request-card pending" data-status="pending">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-1">{{ request.student_name }}</h5>
+                            <div class="text-muted small">
+                                <i class="fas fa-envelope"></i> {{ request.student_email }}
+                                <br>
+                                <i class="fas fa-book"></i> 
+                                <strong>{{ request.course.course_code }}</strong> - {{ request.course.course_name }}
+                                <br>
+                                <i class="fas fa-calendar-alt"></i> 
+                                Requested: {{ request.requested_at.strftime('%Y-%m-%d %H:%M') }}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="status-badge status-pending">
+                                <i class="fas fa-clock"></i> Pending
+                            </span>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="request-actions">
+                                <form method="POST" action="{{ url_for('approve_enrollment_request', request_id=request.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-success btn-sm" 
+                                            onclick="return confirm('Approve enrollment for {{ request.student_name }}?')">
+                                        <i class="fas fa-check"></i> Approve
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-danger btn-sm" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#rejectModal{{ request.id }}">
+                                    <i class="fas fa-times"></i> Reject
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reject Modal -->
+            <div class="modal fade" id="rejectModal{{ request.id }}" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form method="POST" action="{{ url_for('reject_enrollment_request', request_id=request.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Reject Enrollment Request</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Are you sure you want to reject <strong>{{ request.student_name }}</strong>'s enrollment request for <strong>{{ request.course.course_code }}</strong>?</p>
+                                <div class="mb-3">
+                                    <label for="remarks{{ request.id }}" class="form-label">Reason (Optional)</label>
+                                    <textarea class="form-control" id="remarks{{ request.id }}" name="remarks" 
+                                              rows="2" placeholder="Enter reason for rejection..."></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-times"></i> Reject Request
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <!-- Approved Requests -->
+            {% if approved_requests %}
+            <h5 class="mb-3 mt-4"><span class="badge bg-success">Approved</span> Requests</h5>
+            {% for request in approved_requests %}
+            <div class="card request-card approved" data-status="approved">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-1">{{ request.student_name }}</h5>
+                            <div class="text-muted small">
+                                <i class="fas fa-envelope"></i> {{ request.student_email }}
+                                <br>
+                                <i class="fas fa-book"></i> 
+                                <strong>{{ request.course.course_code }}</strong> - {{ request.course.course_name }}
+                                <br>
+                                <i class="fas fa-check-circle text-success"></i> 
+                                Approved: {{ request.reviewed_at.strftime('%Y-%m-%d %H:%M') }}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="status-badge status-approved">
+                                <i class="fas fa-check-circle"></i> Approved
+                            </span>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <a href="{{ url_for('view_course', course_id=request.course.id) }}" 
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye"></i> View Course
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <!-- Rejected Requests -->
+            {% if rejected_requests %}
+            <h5 class="mb-3 mt-4"><span class="badge bg-danger">Rejected</span> Requests</h5>
+            {% for request in rejected_requests %}
+            <div class="card request-card rejected" data-status="rejected">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-1">{{ request.student_name }}</h5>
+                            <div class="text-muted small">
+                                <i class="fas fa-envelope"></i> {{ request.student_email }}
+                                <br>
+                                <i class="fas fa-book"></i> 
+                                <strong>{{ request.course.course_code }}</strong> - {{ request.course.course_name }}
+                                <br>
+                                <i class="fas fa-times-circle text-danger"></i> 
+                                Rejected: {{ request.reviewed_at.strftime('%Y-%m-%d %H:%M') }}
+                                {% if request.remarks %}
+                                <br>
+                                <i class="fas fa-comment"></i> Reason: {{ request.remarks }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <span class="status-badge status-rejected">
+                                <i class="fas fa-times-circle"></i> Rejected
+                            </span>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="fas fa-lock"></i> Closed
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        {% else %}
+            <div class="alert alert-info text-center">
+                <h5><i class="fas fa-inbox"></i> No enrollment requests</h5>
+                <p>There are no enrollment requests to review at the moment.</p>
+                <a href="{{ url_for('list_courses') }}" class="btn btn-primary">
+                    <i class="fas fa-book"></i> View Your Courses
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Filter functionality
+    const filterButtons = document.querySelectorAll('.filter-tabs .btn');
+    const requestCards = document.querySelectorAll('.request-card');
+    
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active button
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            const filter = this.dataset.filter;
+            
+            requestCards.forEach(card => {
+                if (filter === 'all') {
+                    card.style.display = 'block';
+                } else if (card.dataset.status === filter) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

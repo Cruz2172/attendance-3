@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - FaceAttend{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="mb-4">
+                <i class="fas fa-bell text-primary"></i> Notifications
+                {% if unread_count > 0 %}
+                    <span class="badge bg-danger">{{ unread_count }}</span>
+                {% endif %}
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Notifications List -->
+            <div class="card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Notifications</h5>
+                    {% if notifications %}
+                        <button class="btn btn-sm btn-outline-primary" id="markAllRead">
+                            <i class="fas fa-check-double"></i> Mark All Read
+                        </button>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if notifications %}
+                        {% for notification in notifications %}
+                            <div class="notification-item {% if not notification.read %}unread{% endif %} 
+                                                      {% if loop.last %}border-0{% endif %}">
+                                <div class="d-flex align-items-start">
+                                    <div class="notification-icon me-3">
+                                        {% if notification.type == 'attendance' %}
+                                            <i class="fas fa-check-circle text-success"></i>
+                                        {% elif notification.type == 'enrollment' %}
+                                            <i class="fas fa-user-plus text-primary"></i>
+                                        {% elif notification.type == 'course' %}
+                                            <i class="fas fa-book text-info"></i>
+                                        {% else %}
+                                            <i class="fas fa-bell text-warning"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="mb-1">{{ notification.title }}</h6>
+                                            <small class="text-muted">{{ notification.created_at.strftime('%b %d, %I:%M %p') }}</small>
+                                        </div>
+                                        <p class="mb-0">{{ notification.message }}</p>
+                                        {% if not notification.read %}
+                                            <button class="btn btn-sm btn-link p-0 mark-read-btn" 
+                                                    data-id="{{ notification.id }}">
+                                                Mark as read
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-bell-slash fa-4x text-muted mb-3"></i>
+                            <h5>No Notifications</h5>
+                            <p class="text-muted">You're all caught up!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Quick Stats -->
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-simple text-primary"></i> Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Total Notifications</span>
+                        <span class="fw-bold">{{ notifications|length }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Unread</span>
+                        <span class="fw-bold text-danger">{{ unread_count }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Read</span>
+                        <span class="fw-bold text-success">{{ notifications|length - unread_count }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Types Filter -->
+            <div class="card mt-3">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-filter text-primary"></i> Filter by Type</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary filter-btn active" data-type="all">
+                            All
+                        </button>
+                        <button class="btn btn-outline-success filter-btn" data-type="attendance">
+                            <i class="fas fa-check-circle"></i> Attendance
+                        </button>
+                        <button class="btn btn-outline-primary filter-btn" data-type="enrollment">
+                            <i class="fas fa-user-plus"></i> Enrollment
+                        </button>
+                        <button class="btn btn-outline-info filter-btn" data-type="course">
+                            <i class="fas fa-book"></i> Course
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .notification-item {
+        padding: 1rem 0;
+        border-bottom: 1px solid #e9ecef;
+        transition: background-color 0.3s ease;
+    }
+    .notification-item.unread {
+        background-color: #f8f9fc;
+        border-left: 3px solid #4e73df;
+        padding-left: 0.75rem;
+        border-radius: 5px;
+    }
+    .notification-item:hover {
+        background-color: #f8f9fc;
+    }
+    .notification-icon {
+        font-size: 1.5rem;
+        width: 40px;
+        text-align: center;
+    }
+    .mark-read-btn {
+        font-size: 0.8rem;
+        color: #4e73df;
+    }
+    .mark-read-btn:hover {
+        text-decoration: underline;
+    }
+    .filter-btn.active {
+        background: #4e73df;
+        color: white;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Mark as read
+    document.querySelectorAll('.mark-read-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            fetch(`/api/notifications/${id}/read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.parentElement.innerHTML = '<small class="text-muted">Read</small>';
+                    this.closest('.notification-item').classList.remove('unread');
+                    // Update unread count
+                    const count = parseInt(document.querySelector('.badge.bg-danger')?.textContent || 0);
+                    if (count > 0) {
+                        document.querySelector('.badge.bg-danger').textContent = count - 1;
+                        if (count - 1 === 0) {
+                            document.querySelector('.badge.bg-danger').remove();
+                        }
+                    }
+                }
+            });
+        });
+    });
+    
+    // Mark all read
+    document.getElementById('markAllRead')?.addEventListener('click', function() {
+        fetch('/api/notifications/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    });
+    
+    // Filter notifications
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            const type = this.dataset.type;
+            document.querySelectorAll('.notification-item').forEach(item => {
+                if (type === 'all' || item.dataset.type === type) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

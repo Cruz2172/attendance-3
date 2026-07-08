@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Courses{% endblock %}
+
+{% block extra_css %}
+<style>
+    .course-card {
+        transition: transform 0.2s;
+        height: 100%;
+    }
+    .course-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .course-status {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+    .status-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .status-enrolled { background: #28a745; color: white; }
+    .status-pending { background: #ffc107; color: #212529; }
+    .status-rejected { background: #dc3545; color: white; }
+    .status-available { background: #17a2b8; color: white; }
+    .course-actions {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #e9ecef;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-book-open"></i> Available Courses</h2>
+                <p class="text-muted">Browse and enroll in courses</p>
+            </div>
+            <div>
+                <a href="{{ url_for('enroll_with_token') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-key"></i> Enroll with Token
+                </a>
+            </div>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- My Stats -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h3>{{ enrolled_course_ids|length }}</h3>
+                        <p class="mb-0">Enrolled Courses</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body text-center">
+                        <h3>{{ requested_course_ids|length }}</h3>
+                        <p class="mb-0">Pending Requests</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center">
+                        <h3>{{ rejected_course_ids|length }}</h3>
+                        <p class="mb-0">Rejected</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h3>{{ courses|length }}</h3>
+                        <p class="mb-0">Total Available</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Course List -->
+        <div class="row">
+            {% if courses %}
+                {% for course in courses %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card course-card position-relative">
+                        <div class="card-body">
+                            <!-- Status Badge -->
+                            <div class="course-status">
+                                {% if course.id in enrolled_course_ids %}
+                                    <span class="status-badge status-enrolled">
+                                        <i class="fas fa-check-circle"></i> Enrolled
+                                    </span>
+                                {% elif course.id in requested_course_ids %}
+                                    <span class="status-badge status-pending">
+                                        <i class="fas fa-clock"></i> Pending
+                                    </span>
+                                {% elif course.id in rejected_course_ids %}
+                                    <span class="status-badge status-rejected">
+                                        <i class="fas fa-times-circle"></i> Rejected
+                                    </span>
+                                    {% if rejected_remarks and course.id in rejected_remarks %}
+                                    <br>
+                                    <small class="text-muted mt-1 d-block">
+                                        Reason: {{ rejected_remarks[course.id] }}
+                                    </small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="status-badge status-available">
+                                        <i class="fas fa-plus-circle"></i> Available
+                                    </span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Course Info -->
+                            <h5 class="card-title mt-3">{{ course.course_code }}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">{{ course.course_name }}</h6>
+                            
+                            <p class="card-text text-muted small">
+                                {{ course.description|truncate(100) or 'No description' }}
+                            </p>
+                            
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-chalkboard-teacher"></i> 
+                                    {{ course.get_teacher_name() }}
+                                </small>
+                                <br>
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar-alt"></i> 
+                                    {{ course.schedule or 'Schedule TBA' }}
+                                </small>
+                                <br>
+                                <small class="text-muted">
+                                    <i class="fas fa-users"></i> 
+                                    {{ course.get_enrolled_count() }} enrolled
+                                </small>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="course-actions">
+                                {% if course.id in enrolled_course_ids %}
+                                    <a href="{{ url_for('view_course', course_id=course.id) }}" 
+                                       class="btn btn-success btn-sm w-100">
+                                        <i class="fas fa-eye"></i> View Course
+                                    </a>
+                                {% elif course.id in requested_course_ids %}
+                                    <button class="btn btn-warning btn-sm w-100" disabled>
+                                        <i class="fas fa-clock"></i> Request Pending
+                                    </button>
+                                {% elif course.id in rejected_course_ids %}
+                                    <button class="btn btn-secondary btn-sm w-100" disabled>
+                                        <i class="fas fa-times"></i> Request Rejected
+                                    </button>
+                                {% elif course.id in direct_enroll_course_ids %}
+                                    <form method="POST" action="{{ url_for('enroll_via_link', token_code=course_tokens[course.id]) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                                            <i class="fas fa-link"></i> Enroll with Token
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <form method="POST" action="{{ url_for('request_course_enrollment', course_id=course.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-outline-primary btn-sm w-100" 
+                                                onclick="return confirm('Request enrollment in {{ course.course_name }}?')">
+                                            <i class="fas fa-paper-plane"></i> Request Enrollment
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="alert alert-info text-center">
+                        <h5><i class="fas fa-info-circle"></i> No courses available</h5>
+                        <p>There are no courses available for enrollment at the moment.</p>
+                        <a href="{{ url_for('enroll_with_token') }}" class="btn btn-primary">
+                            <i class="fas fa-key"></i> Enroll with Token
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

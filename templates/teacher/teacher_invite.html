@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Student Registration Link - FaceAttend{% endblock %}
+
+{% block extra_css %}
+<style>
+    .success-card {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border-radius: 20px;
+        padding: 2.5rem;
+        color: white;
+        margin-bottom: 2rem;
+    }
+    .link-box {
+        background: #f8f9fc;
+        border-radius: 15px;
+        padding: 1.5rem;
+        border: 2px dashed #667eea;
+        word-break: break-all;
+    }
+    .link-box .link-text {
+        font-size: 1.1rem;
+        color: #2d3748;
+        font-weight: 500;
+    }
+    .course-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f8f9fc;
+    }
+    .course-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <!-- Success Header -->
+        <div class="success-card text-center">
+            <i class="fas fa-check-circle fa-4x mb-3"></i>
+            <h2>Registration Link Generated!</h2>
+            <p>Students can now register and be automatically enrolled in all your courses.</p>
+        </div>
+
+        <!-- Registration Link -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5><i class="fas fa-link text-primary me-2"></i>Student Registration Link</h5>
+                <p class="text-muted small">Share this link with your students. They will be enrolled in ALL your courses automatically.</p>
+                
+                <div class="link-box">
+                    <div class="link-text">{{ registration_link }}</div>
+                </div>
+                
+                <div class="mt-3">
+                    <button class="btn btn-primary" onclick="copyLink()">
+                        <i class="fas fa-copy me-1"></i> Copy Link
+                    </button>
+                    <a href="{{ registration_link }}" target="_blank" class="btn btn-outline-primary">
+                        <i class="fas fa-external-link-alt me-1"></i> Open Link
+                    </a>
+                    <button class="btn btn-success" onclick="shareLink()">
+                        <i class="fas fa-share-alt me-1"></i> Share
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Courses Included -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-book text-primary me-2"></i>Courses Students Will Be Enrolled In</h5>
+            </div>
+            <div class="card-body">
+                {% if courses %}
+                    {% for course in courses %}
+                    <div class="course-item">
+                        <div>
+                            <span class="badge bg-primary">{{ course.course_code }}</span>
+                            <span>{{ course.course_name }}</span>
+                        </div>
+                        <span class="text-success">
+                            <i class="fas fa-check-circle"></i> Included
+                        </span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="alert alert-warning">No active courses found.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Invite Code Details -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Invite Code:</strong>
+                        <span class="badge bg-primary p-2">{{ invite_code }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Valid Until:</strong>
+                        <span>{{ invite.expires_at.strftime('%B %d, %Y') if invite and invite.expires_at else '30 days' }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Max Uses:</strong>
+                        <span>{{ invite.max_uses if invite else 'Unlimited' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="text-center mt-3">
+            <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+            </a>
+            <a href="{{ url_for('generate_student_invite') }}" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i> Generate Another
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyLink() {
+    const link = "{{ registration_link }}";
+    navigator.clipboard.writeText(link).then(() => {
+        alert('Link copied to clipboard!');
+    }).catch(() => {
+        // Fallback
+        const textArea = document.createElement('textarea');
+        textArea.value = link;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Link copied to clipboard!');
+    });
+}
+
+function shareLink() {
+    const link = "{{ registration_link }}";
+    if (navigator.share) {
+        navigator.share({
+            title: 'Student Registration Link',
+            text: 'Register for my courses using this link:',
+            url: link
+        });
+    } else {
+        copyLink();
+    }
+}
+</script>
+{% endblock %}

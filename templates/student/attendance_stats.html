@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance Statistics - FaceAttend{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="mb-4">
+                <i class="fas fa-chart-pie text-primary"></i> Attendance Statistics
+            </h1>
+        </div>
+    </div>
+
+    <!-- Course Selection -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Select Course</label>
+                    <select id="courseSelect" class="form-select">
+                        <option value="all">All Courses</option>
+                        {% for course in courses %}
+                            <option value="{{ course.id }}">
+                                {{ course.course_code }} - {{ course.course_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4" id="statsCards">
+        <!-- Dynamic stats will be rendered here -->
+    </div>
+
+    <!-- Charts -->
+    <div class="row">
+        <div class="col-md-8 mb-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-line text-primary"></i> Attendance Trend</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="attendanceTrendChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie text-primary"></i> Overall Breakdown</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="attendancePieChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Summary -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-calendar-check text-primary"></i> Monthly Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Total Sessions</th>
+                            <th>Present</th>
+                            <th>Absent</th>
+                            <th>Attendance Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monthlyTableBody">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let trendChart = null;
+    let pieChart = null;
+    
+    function updateStats(courseId) {
+        const url = courseId === 'all' 
+            ? '/api/student/attendance-stats' 
+            : `/api/student/attendance-stats?course=${courseId}`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                updateCards(data);
+                updateCharts(data);
+                updateMonthlyTable(data);
+            })
+            .catch(error => console.error('Error:', error));
+    }
+    
+    function updateCards(data) {
+        const cardsHtml = `
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="text-muted">Total Sessions</h6>
+                        <h3>${data.total_sessions || 0}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card text-center border-success">
+                    <div class="card-body">
+                        <h6 class="text-success">Present</h6>
+                        <h3 class="text-success">${data.present || 0}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card text-center border-danger">
+                    <div class="card-body">
+                        <h6 class="text-danger">Absent</h6>
+                        <h3 class="text-danger">${data.absent || 0}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card text-center border-primary">
+                    <div class="card-body">
+                        <h6 class="text-primary">Attendance Rate</h6>
+                        <h3 class="text-primary">${data.attendance_rate || 0}%</h3>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById('statsCards').innerHTML = cardsHtml;
+    }
+    
+    function updateCharts(data) {
+        // Trend Chart
+        const ctx1 = document.getElementById('attendanceTrendChart').getContext('2d');
+        if (trendChart) trendChart.destroy();
+        
+        const dates = data.trend_data?.map(d => d.date) || [];
+        const presentData = data.trend_data?.map(d => d.present) || [];
+        const absentData = data.trend_data?.map(d => d.absent) || [];
+        
+        trendChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Present',
+                        data: presentData,
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Absent',
+                        data: absentData,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Pie Chart
+        const ctx2 = document.getElementById('attendancePieChart').getContext('2d');
+        if (pieChart) pieChart.destroy();
+        
+        pieChart = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: ['Present', 'Absent'],
+                datasets: [{
+                    data: [data.present || 0, data.absent || 0],
+                    backgroundColor: ['#28a745', '#dc3545'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+    
+    function updateMonthlyTable(data) {
+        const tbody = document.getElementById('monthlyTableBody');
+        
+        if (!data.monthly_data || data.monthly_data.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-muted">No data available</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        let html = '';
+        data.monthly_data.forEach(month => {
+            html += `
+                <tr>
+                    <td>${month.month}</td>
+                    <td>${month.total}</td>
+                    <td><span class="text-success">${month.present}</span></td>
+                    <td><span class="text-danger">${month.absent}</span></td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: ${month.rate}%;" 
+                                 aria-valuenow="${month.rate}" 
+                                 aria-valuemin="0" aria-valuemax="100">
+                                ${month.rate}%
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+    
+    // Course selection change
+    document.getElementById('courseSelect').addEventListener('change', function() {
+        updateStats(this.value);
+    });
+    
+    // Initial load
+    updateStats('all');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+
+{% block title %}Mark Attendance - FaceAttend{% endblock %}
+
+{% block extra_css %}
+<style>
+    .course-selector {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid #eaecf4;
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+    }
+    .course-selector:hover {
+        border-color: #667eea;
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .course-selector.active {
+        border-color: #667eea;
+        background: #f8f9fc;
+    }
+    .course-selector .course-code {
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+    .course-selector .course-name {
+        color: #858796;
+        font-size: 0.9rem;
+    }
+    .video-container {
+        background: #000;
+        border-radius: 15px;
+        overflow: hidden;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    .video-container video {
+        width: 100%;
+        display: none;
+    }
+    .video-container canvas {
+        display: none;
+    }
+    .video-container .placeholder {
+        color: #858796;
+        text-align: center;
+        padding: 2rem;
+    }
+    .video-container .placeholder i {
+        font-size: 4rem;
+        color: #dddfeb;
+        margin-bottom: 1rem;
+        display: block;
+    }
+    .video-container .loading {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+    .video-container .loading .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+    .camera-controls {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+    .camera-controls .btn {
+        border-radius: 50px;
+        padding: 0.5rem 1.5rem;
+    }
+    .recognition-result {
+        margin-top: 1rem;
+        padding: 1rem;
+        border-radius: 10px;
+        display: none;
+    }
+    .recognition-result.show {
+        display: block;
+    }
+    .recognition-result.success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+    .recognition-result.error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+    .recognition-result.info {
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+    }
+    .attendance-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .attendance-list .list-group-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .attendance-list .list-group-item .time {
+        font-size: 0.8rem;
+        color: #858796;
+    }
+    .session-status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .session-status.active {
+        background: #d4edda;
+        color: #155724;
+    }
+    .session-status.closed {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+    @media (max-width: 768px) {
+        .course-selector {
+            padding: 0.75rem;
+        }
+        .video-container {
+            min-height: 250px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="mb-4"><i class="fas fa-check-circle text-primary me-2"></i>Mark Attendance</h1>
+        </div>
+    </div>
+
+    <!-- Course Selection -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h5 class="mb-3"><i class="fas fa-book text-primary me-2"></i>Select Course</h5>
+            <div class="row">
+                {% for course in courses %}
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="course-selector {% if selected_course and selected_course.id == course.id %}active{% endif %}"
+                         onclick="location.href='{{ url_for('mark_attendance') }}?course={{ course.id }}'">
+                        <div class="course-code">{{ course.course_code }}</div>
+                        <div class="course-name">{{ course.course_name }}</div>
+                        <small class="text-muted">
+                            <i class="fas fa-users me-1"></i>
+                            {{ course.get_enrolled_count() }} students
+                        </small>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-md-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        {% if user.role == 'teacher' %}
+                            You haven't created any courses yet. 
+                            <a href="{{ url_for('create_course') }}" class="alert-link">Create a course</a> to start marking attendance.
+                        {% else %}
+                            You are not enrolled in any courses.
+                            <a href="{{ url_for('browse_courses') }}" class="alert-link">Browse courses</a> to enroll.
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {% if selected_course %}
+    <!-- Session Status -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-video text-primary me-2"></i>
+                                {{ selected_course.course_code }} - {{ selected_course.course_name }}
+                            </h5>
+                            <small class="text-muted">
+                                <i class="fas fa-users me-1"></i>
+                                {{ selected_course.get_enrolled_count() }} students enrolled
+                            </small>
+                        </div>
+                        <div>
+                            {% if active_session %}
+                                <span class="session-status active">
+                                    <i class="fas fa-circle me-1"></i> Active Session
+                                </span>
+                                <span class="badge bg-primary ms-2">
+                                    Token: {{ active_session.session_token }}
+                                </span>
+                            {% else %}
+                                <span class="session-status closed">
+                                    <i class="fas fa-circle me-1"></i> No Active Session
+                                </span>
+                                <a href="{{ url_for('start_attendance_session', course_id=selected_course.id) }}" 
+                                   class="btn btn-success btn-sm ms-2">
+                                    <i class="fas fa-play me-1"></i> Start Session
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if active_session %}
+    <!-- Camera Section -->
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-camera text-primary me-2"></i>Face Recognition</h5>
+                </div>
+                <div class="card-body">
+                    <div class="video-container">
+                        <video id="attendanceVideo" autoplay></video>
+                        <canvas id="attendanceCanvas"></canvas>
+                        <div id="videoPlaceholder" class="placeholder">
+                            <i class="fas fa-camera"></i>
+                            <p>Click "Start Camera" to begin</p>
+                            <small>Make sure you are in good lighting</small>
+                        </div>
+                        <div id="cameraLoading" class="loading">
+                            <div class="spinner-border text-primary"></div>
+                            <p class="mt-2">Accessing camera...</p>
+                        </div>
+                    </div>
+                    <div class="camera-controls">
+                        <button type="button" id="startCameraBtn" class="btn btn-primary">
+                            <i class="fas fa-play me-1"></i> Start Camera
+                        </button>
+                        <button type="button" id="captureBtn" class="btn btn-success" disabled>
+                            <i class="fas fa-camera me-1"></i> Scan Face
+                        </button>
+                        <button type="button" id="stopCameraBtn" class="btn btn-danger" disabled>
+                            <i class="fas fa-stop me-1"></i> Stop Camera
+                        </button>
+                    </div>
+
+                    <div id="recognitionResult" class="recognition-result"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <!-- Recent Attendance -->
+            <div class="card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-clock text-primary me-2"></i>Recent Attendance</h5>
+                    <span class="badge bg-primary">{{ recent_attendance|length }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="attendance-list">
+                        {% if recent_attendance %}
+                            <div class="list-group list-group-flush">
+                                {% for record in recent_attendance %}
+                                    <div class="list-group-item">
+                                        <div>
+                                            <strong>{{ record.student_name }}</strong>
+                                            <br>
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar-alt me-1"></i>
+                                                {{ record.date }}
+                                            </small>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-success">Present</span>
+                                            <br>
+                                            <small class="time">{{ record.time }}</small>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-clock fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No attendance recorded yet</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6><i class="fas fa-info-circle text-primary me-2"></i>How to Mark Attendance</h6>
+                    <ol class="small text-muted mb-0">
+                        <li>Click "Start Camera" to begin</li>
+                        <li>Look directly at the camera</li>
+                        <li>Click "Scan Face" to mark attendance</li>
+                        <li>Wait for confirmation</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Only initialize camera if there's an active session
+    {% if active_session %}
+    const video = document.getElementById('attendanceVideo');
+    const canvas = document.getElementById('attendanceCanvas');
+    const startBtn = document.getElementById('startCameraBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const stopBtn = document.getElementById('stopCameraBtn');
+    const videoPlaceholder = document.getElementById('videoPlaceholder');
+    const cameraLoading = document.getElementById('cameraLoading');
+    const resultDiv = document.getElementById('recognitionResult');
+    const sessionToken = "{{ active_session.session_token }}";
+    const sessionId = "{{ active_session.id }}";
+
+    let stream = null;
+    let isRunning = false;
+    let isProcessing = false;
+
+    // Check camera support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        resultDiv.className = 'recognition-result show error';
+        resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Camera not supported in this browser';
+        startBtn.disabled = true;
+        return;
+    }
+
+    // Start Camera
+    startBtn.addEventListener('click', function() {
+        resultDiv.className = 'recognition-result';
+        resultDiv.innerHTML = '';
+        startBtn.disabled = true;
+        cameraLoading.style.display = 'block';
+        videoPlaceholder.style.display = 'none';
+
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'user',
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            },
+            audio: false
+        })
+        .then(function(mediaStream) {
+            stream = mediaStream;
+            video.srcObject = stream;
+            
+            video.onloadedmetadata = function() {
+                video.play()
+                    .then(function() {
+                        video.style.display = 'block';
+                        cameraLoading.style.display = 'none';
+                        isRunning = true;
+                        captureBtn.disabled = false;
+                        stopBtn.disabled = false;
+                        startBtn.disabled = true;
+                        
+                        resultDiv.className = 'recognition-result show info';
+                        resultDiv.innerHTML = '<i class="fas fa-info-circle me-2"></i>Camera ready! Look at the camera and click "Scan Face".';
+                    })
+                    .catch(function(err) {
+                        console.error('Play error:', err);
+                        resultDiv.className = 'recognition-result show error';
+                        resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Error playing video stream';
+                        startBtn.disabled = false;
+                    });
+            };
+            
+            video.onerror = function(err) {
+                console.error('Video error:', err);
+                resultDiv.className = 'recognition-result show error';
+                resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Video error occurred';
+                startBtn.disabled = false;
+            };
+        })
+        .catch(function(error) {
+            console.error('Camera error:', error);
+            cameraLoading.style.display = 'none';
+            videoPlaceholder.style.display = 'block';
+            startBtn.disabled = false;
+            
+            let errorMsg = 'Camera error: ';
+            if (error.name === 'NotAllowedError') {
+                errorMsg += 'Please allow camera access in your browser settings.';
+            } else if (error.name === 'NotFoundError') {
+                errorMsg += 'No camera found on this device.';
+            } else if (error.name === 'NotReadableError') {
+                errorMsg += 'Camera is in use by another application.';
+            } else {
+                errorMsg += error.message;
+            }
+            
+            resultDiv.className = 'recognition-result show error';
+            resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + errorMsg;
+        });
+    });
+
+    // Capture / Scan Face
+    captureBtn.addEventListener('click', function() {
+        if (!isRunning || !stream) {
+            resultDiv.className = 'recognition-result show error';
+            resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Camera is not running. Please start camera first.';
+            return;
+        }
+
+        if (video.readyState < 2 || video.videoWidth === 0) {
+            resultDiv.className = 'recognition-result show error';
+            resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Camera not ready. Please wait.';
+            return;
+        }
+
+        if (isProcessing) return;
+        isProcessing = true;
+        captureBtn.disabled = true;
+        resultDiv.className = 'recognition-result show info';
+        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+
+        const context = canvas.getContext('2d');
+        const width = video.videoWidth || 640;
+        const height = video.videoHeight || 480;
+        
+        canvas.width = width;
+        canvas.height = height;
+        context.drawImage(video, 0, 0, width, height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+        // Send to server
+        fetch('/courses/session/' + sessionId + '/mark', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                image: imageData,
+                session_token: sessionToken
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            isProcessing = false;
+            captureBtn.disabled = false;
+            
+            if (data.success) {
+                resultDiv.className = 'recognition-result show success';
+                resultDiv.innerHTML = '<i class="fas fa-check-circle me-2"></i>' + data.message;
+                
+                // Reload page after 2 seconds to update attendance list
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
+            } else {
+                resultDiv.className = 'recognition-result show error';
+                resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + data.message;
+            }
+        })
+        .catch(function(error) {
+            isProcessing = false;
+            captureBtn.disabled = false;
+            console.error('Error:', error);
+            resultDiv.className = 'recognition-result show error';
+            resultDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Error processing. Please try again.';
+        });
+    });
+
+    // Stop Camera
+    stopBtn.addEventListener('click', function() {
+        if (stream) {
+            stream.getTracks().forEach(function(track) {
+                track.stop();
+            });
+            stream = null;
+            video.srcObject = null;
+            video.style.display = 'none';
+            videoPlaceholder.style.display = 'block';
+            
+            isRunning = false;
+            captureBtn.disabled = true;
+            stopBtn.disabled = true;
+            startBtn.disabled = false;
+            
+            resultDiv.className = 'recognition-result show info';
+            resultDiv.innerHTML = '<i class="fas fa-info-circle me-2"></i>Camera stopped.';
+        }
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+        if (stream) {
+            stream.getTracks().forEach(function(track) {
+                track.stop();
+            });
+        }
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}

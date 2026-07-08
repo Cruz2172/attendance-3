@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - FaceAttend{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="display-1 text-primary">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <h4>{{ user.fullname }}</h4>
+                    <p class="text-muted">{{ user.email }}</p>
+                    <p>
+                        <span class="badge bg-success">Student</span>
+                        {% if user.is_approved %}
+                            <span class="badge bg-info">Approved</span>
+                        {% else %}
+                            <span class="badge bg-warning">Pending</span>
+                        {% endif %}
+                    </p>
+                    <hr>
+                    <div class="text-start">
+                        <p><strong>Student ID:</strong> {{ student.student_id if student else 'Not set' }}</p>
+                        <p><strong>Level:</strong> {{ student.level if student else 'Not set' }}</p>
+                        <p><strong>Department:</strong> {{ student.course if student else 'Not set' }}</p>
+                        <p><strong>Joined:</strong> {{ user.created_at.strftime('%b %d, %Y') if user.created_at else 'N/A' }}</p>
+                        <p>
+                            <strong>Face Enrollment:</strong>
+                            {% if student %}
+                                <span class="badge bg-success">Enrolled</span>
+                            {% else %}
+                                <span class="badge bg-warning">Not Enrolled</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <!-- Edit Profile -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-edit"></i> Edit Profile</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label>Full Name</label>
+                                <input type="text" name="fullname" class="form-control" 
+                                       value="{{ user.fullname }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label>Email</label>
+                                <input type="email" name="email" class="form-control" 
+                                       value="{{ user.email }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label>Student ID</label>
+                                <input type="text" name="student_id" class="form-control" 
+                                       value="{{ student.student_id if student else '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label>Level</label>
+                                <select name="level" class="form-select">
+                                    <option value="">Select Level</option>
+                                    <option value="100" {% if student and student.level == '100' %}selected{% endif %}>100 Level</option>
+                                    <option value="200" {% if student and student.level == '200' %}selected{% endif %}>200 Level</option>
+                                    <option value="300" {% if student and student.level == '300' %}selected{% endif %}>300 Level</option>
+                                    <option value="400" {% if student and student.level == '400' %}selected{% endif %}>400 Level</option>
+                                    <option value="500" {% if student and student.level == '500' %}selected{% endif %}>500 Level</option>
+                                    <option value="600" {% if student and student.level == '600' %}selected{% endif %}>600 Level</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label>Department</label>
+                                <select name="course" class="form-select">
+                                    <option value="">Select Department</option>
+                                    <option value="Computer Science" {% if student and student.course == 'Computer Science' %}selected{% endif %}>Computer Science</option>
+                                    <option value="Information Technology" {% if student and student.course == 'Information Technology' %}selected{% endif %}>Information Technology</option>
+                                    <option value="Software Engineering" {% if student and student.course == 'Software Engineering' %}selected{% endif %}>Software Engineering</option>
+                                    <option value="Data Science" {% if student and student.course == 'Data Science' %}selected{% endif %}>Data Science</option>
+                                    <option value="Cyber Security" {% if student and student.course == 'Cyber Security' %}selected{% endif %}>Cyber Security</option>
+                                    <option value="Other" {% if student and student.course == 'Other' %}selected{% endif %}>Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Change Password -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-key"></i> Change Password</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('student_change_password') }}">
+                        <div class="mb-3">
+                            <label>Current Password</label>
+                            <input type="password" name="current_password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>New Password</label>
+                            <input type="password" name="new_password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Confirm Password</label>
+                            <input type="password" name="confirm_password" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-key"></i> Change Password
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

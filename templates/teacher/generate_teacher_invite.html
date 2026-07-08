@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Student Invite - FaceAttend{% endblock %}
+
+{% block extra_css %}
+<style>
+    .invite-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 2.5rem;
+        color: white;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .invite-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 300px;
+        height: 300px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 50%;
+    }
+    .invite-card h2 {
+        font-weight: 700;
+        position: relative;
+        z-index: 1;
+    }
+    .invite-card p {
+        opacity: 0.9;
+        position: relative;
+        z-index: 1;
+    }
+    .course-list-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+        border: 1px solid #eaecf4;
+    }
+    .course-list-card .course-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f8f9fc;
+    }
+    .course-list-card .course-item:last-child {
+        border-bottom: none;
+    }
+    .course-list-card .course-item .badge {
+        font-size: 0.8rem;
+    }
+    .info-box {
+        background: #f8f9fc;
+        border-radius: 10px;
+        padding: 1rem;
+        border-left: 4px solid #667eea;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <!-- Invite Card -->
+        <div class="invite-card">
+            <h2><i class="fas fa-ticket-alt me-2"></i>Generate Student Registration Link</h2>
+            <p>Create a single link that will enroll students in ALL your active courses automatically.</p>
+            <p class="small opacity-75">
+                <i class="fas fa-info-circle me-1"></i>
+                Students will be auto-approved and enrolled in all your courses with one click.
+            </p>
+        </div>
+
+        <!-- Current Courses -->
+        <div class="course-list-card mb-4">
+            <h5><i class="fas fa-book text-primary me-2"></i>Your Active Courses</h5>
+            <p class="text-muted small">Students will be enrolled in ALL these courses when they register.</p>
+            
+            {% if courses %}
+                <div class="mt-3">
+                    {% for course in courses %}
+                    <div class="course-item">
+                        <div>
+                            <span class="badge bg-primary">{{ course.course_code }}</span>
+                            <span>{{ course.course_name }}</span>
+                        </div>
+                        <span class="text-muted small">
+                            <i class="fas fa-users me-1"></i>
+                            {{ course.get_enrolled_count() }} students
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-3 text-success">
+                    <i class="fas fa-check-circle"></i>
+                    {{ courses|length }} course(s) will be included in the registration link.
+                </div>
+            {% else %}
+                <div class="alert alert-warning mt-2">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    You don't have any active courses. 
+                    <a href="{{ url_for('create_course') }}" class="alert-link">Create a course first</a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Generate Button -->
+        <div class="text-center">
+            <form method="POST" action="{{ url_for('generate_student_invite') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                {% if courses %}
+                    <button type="submit" class="btn btn-success btn-lg px-5 py-3">
+                        <i class="fas fa-link me-2"></i> Generate Registration Link
+                    </button>
+                    <p class="text-muted small mt-2">
+                        <i class="fas fa-clock me-1"></i>
+                        Link will be valid for 30 days and can be used by multiple students.
+                    </p>
+                {% else %}
+                    <button type="submit" class="btn btn-secondary btn-lg px-5 py-3" disabled>
+                        <i class="fas fa-link me-2"></i> Create a Course First
+                    </button>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- How It Works -->
+        <div class="mt-4">
+            <div class="info-box">
+                <h6><i class="fas fa-info-circle text-primary"></i> How It Works</h6>
+                <ol class="small text-muted mb-0">
+                    <li>Generate a single registration link</li>
+                    <li>Share the link with your students</li>
+                    <li>Students register using the link</li>
+                    <li>They are automatically enrolled in ALL your courses</li>
+                    <li>You can mark attendance per course separately</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

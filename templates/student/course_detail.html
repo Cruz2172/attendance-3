@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course.course_code }} - {{ course.course_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Course Header -->
+    <div class="card bg-primary text-white">
+        <div class="card-body">
+            <h2>
+                <span class="badge bg-light text-dark">{{ course.course_code }}</span>
+                {{ course.course_name }}
+            </h2>
+            <p class="mb-0">
+                <i class="fas fa-user-tie"></i> Instructor: {{ course.get_teacher_name() }}
+            </p>
+            {% if course.schedule %}
+                <p class="mb-0">
+                    <i class="fas fa-calendar-alt"></i> {{ course.schedule }}
+                </p>
+            {% endif %}
+            {% if course.description %}
+                <p class="mt-2">{{ course.description }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row mt-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>Total Sessions</h5>
+                    <h2 class="text-primary">{{ stats.total_sessions }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>Attended</h5>
+                    <h2 class="text-success">{{ stats.attended }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>Missed</h5>
+                    <h2 class="text-danger">{{ stats.total_sessions - stats.attended }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>Attendance Rate</h5>
+                    <h2 class="text-info">{{ stats.percentage }}%</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Progress -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Attendance Progress</h5>
+            <div class="progress" style="height: 30px;">
+                <div class="progress-bar 
+                    {% if stats.percentage >= 80 %}bg-success
+                    {% elif stats.percentage >= 60 %}bg-warning
+                    {% else %}bg-danger{% endif %}" 
+                    style="width: {{ stats.percentage }}%;">
+                    {{ stats.percentage }}%
+                </div>
+            </div>
+            <small class="text-muted mt-2">
+                {% if stats.percentage >= 80 %}
+                    <i class="fas fa-trophy text-success"></i> Excellent attendance!
+                {% elif stats.percentage >= 60 %}
+                    <i class="fas fa-thumbs-up text-warning"></i> Good attendance!
+                {% else %}
+                    <i class="fas fa-exclamation-triangle text-danger"></i> Needs improvement!
+                {% endif %}
+            </small>
+        </div>
+    </div>
+
+    <!-- Sessions -->
+    <div class="card">
+        <div class="card-header">
+            <h5><i class="fas fa-list"></i> Session History</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if sessions %}
+                <div class="list-group list-group-flush">
+                    {% for session in sessions %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ session.session_date.strftime('%b %d, %Y') if session.session_date else 'N/A' }}</strong>
+                                <span class="text-muted ms-2">
+                                    {{ session.session_time.strftime('%I:%M %p') if session.session_time else 'N/A' }}
+                                </span>
+                                <br><small class="text-muted">{{ session.topic or 'Regular Class' }}</small>
+                            </div>
+                            <div>
+                                {% if session.id in attended_session_ids %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle"></i> Present
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-clock"></i> Not Marked
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-calendar-alt fa-3x text-muted"></i>
+                    <p class="text-muted">No sessions held yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

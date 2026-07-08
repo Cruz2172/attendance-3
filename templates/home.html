@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Face Attendance{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <h1 class="display-4 mb-4" style="color: #667eea;">
+                    <i class="fas fa-fingerprint"></i> Facial Recognition Attendance
+                </h1>
+                <p class="lead mb-4">
+                    Welcome to the Smart Classroom Attendance System using Facial Recognition Technology.
+                </p>
+                <div class="row mt-5">
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <i class="fas fa-user-graduate fa-3x mb-3" style="color: #667eea;"></i>
+                                <h5>Easy Enrollment</h5>
+                                <p>Students can enroll with their facial data in seconds</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <i class="fas fa-camera fa-3x mb-3" style="color: #667eea;"></i>
+                                <h5>Quick Recognition</h5>
+                                <p>Instantly recognize faces and mark attendance</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <i class="fas fa-chart-line fa-3x mb-3" style="color: #667eea;"></i>
+                                <h5>Real-time Dashboard</h5>
+                                <p>Track attendance statistics and reports</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    {% if not session.get('user_id') %}
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg me-2">
+                            <i class="fas fa-sign-in-alt"></i> Login
+                        </a>
+                        <a href="{{ url_for('register') }}" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-user-plus"></i> Register
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-chart-pie"></i> Go to Dashboard
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

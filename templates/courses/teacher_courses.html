@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}My Courses - Face Attendance{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Header -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="mb-0">
+                    <i class="fas fa-chalkboard-teacher text-primary"></i> My Courses
+                </h2>
+                <p class="text-muted mb-0">Manage all the courses you teach</p>
+            </div>
+            <div>
+                <a href="{{ url_for('create_course') }}" class="btn btn-primary">
+                    <i class="fas fa-plus-circle"></i> Create New Course
+                </a>
+            </div>
+        </div>
+
+        <!-- Course Cards -->
+        {% if courses and courses|length > 0 %}
+        <div class="row">
+            {% for course in courses %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0 text-truncate">
+                            <i class="fas fa-book"></i> {{ course.course_code|default('N/A') }}
+                        </h5>
+                        <small class="text-white-50 text-truncate d-block">
+                            {{ course.course_name|default('Unknown Course') }}
+                        </small>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-2">
+                            <i class="fas fa-align-left"></i> 
+                            {{ (course.description|default('No description'))|truncate(60) }}
+                        </p>
+                        
+                        <div class="row text-center mb-2">
+                            <div class="col-4">
+                                <div class="fw-bold text-primary">{{ course.get_enrolled_count()|default(0) }}</div>
+                                <small class="text-muted">Students</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="fw-bold text-primary">{{ course.sessions|length }}</div>
+                                <small class="text-muted">Sessions</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="fw-bold text-primary">
+                                    {% set active_sessions = 0 %}
+                                    {% for session in course.sessions %}
+                                        {% if session.status == 'active' %}
+                                            {% set active_sessions = active_sessions + 1 %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {{ active_sessions }}
+                                </div>
+                                <small class="text-muted">Active</small>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar-alt"></i> {{ course.schedule|default('Schedule not set') }}
+                            </small>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('view_course', course_id=course.id) }}" 
+                               class="btn btn-primary btn-sm flex-grow-1">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="{{ url_for('start_attendance_session', course_id=course.id) }}" 
+                               class="btn btn-success btn-sm flex-grow-1">
+                                <i class="fas fa-play"></i> Start
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-chalkboard-teacher fa-4x text-muted mb-3"></i>
+                <h4>No Courses Created Yet</h4>
+                <p class="text-muted">You haven't created any courses. Click the button below to get started.</p>
+                <a href="{{ url_for('create_course') }}" class="btn btn-primary mt-3">
+                    <i class="fas fa-plus-circle"></i> Create Your First Course
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

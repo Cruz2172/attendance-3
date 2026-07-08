@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course.course_code }} - {{ course.course_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .course-header {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+    }
+    .course-header h2 {
+        font-weight: 700;
+    }
+    .course-header .course-code {
+        opacity: 0.8;
+        font-size: 14px;
+    }
+    .stat-card {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        height: 100%;
+    }
+    .stat-card .number {
+        font-size: 28px;
+        font-weight: 700;
+        color: #667eea;
+    }
+    .stat-card .label {
+        font-size: 12px;
+        color: #6c757d;
+    }
+    .student-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .student-item {
+        padding: 8px 12px;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .student-item:last-child {
+        border-bottom: none;
+    }
+    .session-card {
+        transition: transform 0.2s;
+        cursor: pointer;
+    }
+    .session-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .session-card.active {
+        border-left: 4px solid #28a745;
+    }
+    .session-card.closed {
+        border-left: 4px solid #dc3545;
+        opacity: 0.7;
+    }
+    .token-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .token-item {
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .token-item .token-code {
+        font-family: monospace;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 3px;
+    }
+    .token-item .token-uses {
+        font-size: 12px;
+        color: #6c757d;
+    }
+    .pending-request-item {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 10px 15px;
+        border-radius: 5px;
+        margin-bottom: 8px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Course Header -->
+        <div class="course-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="course-code">{{ course.course_code }}</div>
+                    <h2>{{ course.course_name }}</h2>
+                    <p class="mb-0">
+                        <i class="fas fa-chalkboard-teacher"></i> 
+                        {{ course.get_teacher_name() }}
+                        <span class="ms-3">
+                            <i class="fas fa-calendar-alt"></i> 
+                            {{ course.schedule or 'Schedule TBA' }}
+                        </span>
+                    </p>
+                </div>
+                <div>
+                    <span class="badge bg-{{ 'success' if course.is_active else 'danger' }}">
+                        {{ 'Active' if course.is_active else 'Inactive' }}
+                    </span>
+                </div>
+            </div>
+            {% if course.description %}
+            <p class="mt-3 mb-0"><strong>Description:</strong> {{ course.description }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="number">{{ enrolled_students|length }}</div>
+                    <div class="label">Enrolled Students</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="number">{{ sessions|length }}</div>
+                    <div class="label">Total Sessions</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="number">{{ pending_requests|length }}</div>
+                    <div class="label">Pending Requests</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="number">{{ enrollment_tokens|length }}</div>
+                    <div class="label">Active Tokens</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Teacher Actions -->
+        {% if session.user_role in ['teacher', 'admin'] %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5><i class="fas fa-tools"></i> Teacher Actions</h5>
+                <div class="action-buttons">
+                    <a href="{{ url_for('start_attendance_session', course_id=course.id) }}" class="btn btn-success">
+                        <i class="fas fa-play"></i> Start Attendance Session
+                    </a>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateTokenModal">
+                        <i class="fas fa-key"></i> Generate Enrollment Token
+                    </button>
+                    <a href="{{ url_for('manage_enrollment_requests') }}" class="btn btn-warning">
+                        <i class="fas fa-user-plus"></i> Manage Requests
+                        {% if pending_requests|length > 0 %}
+                        <span class="badge bg-dark">{{ pending_requests|length }}</span>
+                        {% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-md-6">
+                <!-- Enrolled Students -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-users"></i> Enrolled Students</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if enrolled_students %}
+                        <div class="student-list">
+                            {% for student in enrolled_students %}
+                            <div class="student-item">
+                                <div>
+                                    <strong>{{ student.fullname }}</strong>
+                                    <span class="text-muted ms-2 small">{{ student.email }}</span>
+                                </div>
+                                <span class="badge bg-secondary">Enrolled</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center my-3">No students enrolled yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Pending Requests (Teacher Only) -->
+                {% if session.user_role in ['teacher', 'admin'] and pending_requests %}
+                <div class="card mb-4">
+                    <div class="card-header bg-warning">
+                        <h5 class="mb-0"><i class="fas fa-clock"></i> Pending Enrollment Requests</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for request in pending_requests %}
+                        <div class="pending-request-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ request.student.fullname }}</strong>
+                                    <span class="text-muted ms-2 small">{{ request.student.email }}</span>
+                                    <br>
+                                    <small class="text-muted">
+                                        Requested: {{ request.requested_at.strftime('%Y-%m-%d %H:%M') }}
+                                    </small>
+                                </div>
+                                <div>
+                                    <form method="POST" action="{{ url_for('approve_enrollment_request', request_id=request.id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-success btn-sm">
+                                            <i class="fas fa-check"></i> Approve
+                                        </button>
+                                    </form>
+                                    <button class="btn btn-danger btn-sm" data-bs-toggle="modal" 
+                                            data-bs-target="#rejectModal{{ request.id }}">
+                                        <i class="fas fa-times"></i> Reject
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reject Modal -->
+                        <div class="modal fade" id="rejectModal{{ request.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form method="POST" action="{{ url_for('reject_enrollment_request', request_id=request.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Reject Enrollment Request</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Are you sure you want to reject <strong>{{ request.student.fullname }}</strong>'s enrollment request?</p>
+                                            <div class="mb-3">
+                                                <label for="remarks{{ request.id }}" class="form-label">Reason (Optional)</label>
+                                                <textarea class="form-control" id="remarks{{ request.id }}" 
+                                                          name="remarks" rows="2" 
+                                                          placeholder="Enter reason for rejection..."></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-danger">Reject</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Active Tokens -->
+                {% if enrollment_tokens %}
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-key"></i> Active Enrollment Tokens</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="token-list">
+                            {% for token in enrollment_tokens %}
+                            <div class="token-item">
+                                <div>
+                                    <div class="token-code">{{ token.token_code }}</div>
+                                    <div class="token-uses">
+                                        Uses: {{ token.used_count }}/{{ token.max_uses if token.max_uses != -1 else '∞' }}
+                                        <span class="ms-2">
+                                            Expires: {{ token.expires_at.strftime('%Y-%m-%d') }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary copy-token-btn" 
+                                        data-token="{{ token.token_code }}"
+                                        data-course="{{ course.course_code }}">
+                                    <i class="fas fa-copy"></i> Copy Link
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-md-6">
+                <!-- Attendance Sessions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-calendar-check"></i> Attendance Sessions</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if sessions %}
+                            {% for session in sessions %}
+                            <div class="card session-card {{ session.status }} mb-3" 
+                                 onclick="location.href='{{ url_for('view_session', session_id=session.id) }}'">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                {{ session.topic or 'Regular Class' }}
+                                                <span class="badge bg-{{ 'success' if session.status == 'active' else 'secondary' }}">
+                                                    {{ session.status.upper() }}
+                                                </span>
+                                            </h6>
+                                            <div class="text-muted small">
+                                                <i class="fas fa-calendar-alt"></i> 
+                                                {{ session.session_date.strftime('%Y-%m-%d') }}
+                                                <span class="ms-2">
+                                                    <i class="fas fa-clock"></i> 
+                                                    {{ session.session_time.strftime('%H:%M') }}
+                                                </span>
+                                                <span class="ms-2">
+                                                    <i class="fas fa-users"></i> 
+                                                    {{ session.get_present_count() }}/{{ session.get_total_enrolled() }} present
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-info">Token: {{ session.session_token }}</span>
+                                        </div>
+                                    </div>
+                                    {% if session.status == 'active' %}
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('view_session', session_id=session.id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-arrow-right"></i> Mark Attendance
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted text-center my-3">No attendance sessions yet.</p>
+                            {% if session.user_role in ['teacher', 'admin'] %}
+                            <div class="text-center">
+                                <a href="{{ url_for('start_attendance_session', course_id=course.id) }}" 
+                                   class="btn btn-success">
+                                    <i class="fas fa-play"></i> Start First Session
+                                </a>
+                            </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h5><i class="fas fa-quick-actions"></i> Quick Actions</h5>
+                        <div class="d-grid gap-2">
+                            {% if session.user_role == 'student' %}
+                            <a href="{{ url_for('mark_attendance') }}" class="btn btn-primary">
+                                <i class="fas fa-camera"></i> Mark Attendance
+                            </a>
+                            {% endif %}
+                            <a href="{{ url_for('list_courses') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Courses
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- GENERATE TOKEN MODAL (Inline) -->
+<!-- ============================================ -->
+<div class="modal fade" id="generateTokenModal" tabindex="-1" aria-labelledby="generateTokenModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('generate_course_token_teacher') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="course_id" value="{{ course.id }}">
+                
+                <div class="modal-header">
+                    <h5 class="modal-title" id="generateTokenModalLabel">
+                        <i class="fas fa-key text-primary"></i> Generate Enrollment Token
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body">
+                    <p class="text-muted">
+                        Generate a token for students to enroll in <strong>{{ course.course_code }} - {{ course.course_name }}</strong>
+                    </p>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Students can use this token to enroll directly without needing teacher approval.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="max_uses" class="form-label">Maximum Uses</label>
+                        <input type="number" class="form-control" id="max_uses" name="max_uses" 
+                               value="50" min="1" max="999" required>
+                        <small class="text-muted">How many students can use this token (max 999)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="expires_days" class="form-label">Expires In (Days)</label>
+                        <input type="number" class="form-control" id="expires_days" name="expires_days" 
+                               value="7" min="1" max="365" required>
+                        <small class="text-muted">Token will expire after this many days</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Token Preview</label>
+                        <div class="bg-light p-3 text-center rounded">
+                            <span id="tokenPreview" style="font-family:monospace;font-size:24px;letter-spacing:4px;">
+                                ABCDEFGH
+                            </span>
+                        </div>
+                        <small class="text-muted">A random 8-character token will be generated</small>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-share-alt"></i> Generate Token
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SCRIPTS -->
+<!-- ============================================ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Copy token link functionality
+    document.querySelectorAll('.copy-token-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent card click
+            const token = this.dataset.token;
+            const link = window.location.origin + '/courses/enroll/' + token;
+            
+            navigator.clipboard.writeText(link).then(() => {
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                }, 2000);
+            }).catch(() => {
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = link;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('Link copied to clipboard: ' + link);
+            });
+        });
+    });
+
+    // Random token preview animation in modal
+    const tokenPreview = document.getElementById('tokenPreview');
+    if (tokenPreview) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        setInterval(() => {
+            let token = '';
+            for (let i = 0; i < 8; i++) {
+                token += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            tokenPreview.textContent = token;
+        }, 1000);
+    }
+
+    // Auto-submit token form when modal is shown (optional)
+    const modal = document.getElementById('generateTokenModal');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function() {
+            // Generate a random token preview
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let token = '';
+            for (let i = 0; i < 8; i++) {
+                token += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            if (tokenPreview) {
+                tokenPreview.textContent = token;
+            }
+        });
+    }
+});
+
+// Session card click handling
+document.querySelectorAll('.session-card').forEach(card => {
+    card.addEventListener('click', function() {
+        // Already handled by onclick attribute
+    });
+});
+</script>
+{% endblock %}

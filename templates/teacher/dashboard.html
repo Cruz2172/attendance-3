@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Teacher Dashboard - FaceAttend{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        transition: transform 0.3s ease;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+    .stat-number {
+        font-weight: 700;
+        font-size: 2.5rem;
+    }
+    .welcome-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        color: white;
+        margin-bottom: 2rem;
+    }
+    .quick-action-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: 2px solid transparent;
+        border-radius: 15px;
+        text-align: center;
+        padding: 1.5rem;
+        background: #f8f9fc;
+    }
+    .quick-action-card:hover {
+        border-color: #667eea;
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        background: white;
+    }
+    .quick-action-card i {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .course-card {
+        transition: all 0.3s ease;
+        border: 1px solid #eaecf4;
+        border-radius: 12px;
+    }
+    .course-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .activity-item {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #eaecf4;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .activity-icon.student {
+        background: #e8f0fe;
+        color: #4e73df;
+    }
+    .activity-icon.request {
+        background: #fff3e0;
+        color: #f6c23e;
+    }
+    .activity-icon.session {
+        background: #e8f5e9;
+        color: #28a745;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Welcome Section -->
+    <div class="welcome-card">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2><i class="fas fa-chalkboard-teacher me-2"></i>Welcome, {{ user.fullname }}!</h2>
+                <p class="mb-0 opacity-75">
+                    <i class="fas fa-clock me-1"></i>
+                    {{ now.strftime('%A, %B %d, %Y at %I:%M %p') }}
+                </p>
+                <p class="mb-0 opacity-75">
+                    <i class="fas fa-envelope me-1"></i>
+                    {{ user.email }}
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <span class="badge bg-light text-dark p-2">
+                    <i class="fas fa-users me-1"></i>
+                    {{ total_students }} Unique Student(s)
+                </span>
+                <br>
+                <span class="badge bg-light text-dark mt-2 p-2">
+                    <i class="fas fa-book me-1"></i>
+                    {{ courses|length }} Course(s)
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stats-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-book fa-2x text-primary mb-2"></i>
+                    <h6 class="text-muted">My Courses</h6>
+                    <h2 class="stat-number text-primary">{{ courses|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stats-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-2x text-success mb-2"></i>
+                    <h6 class="text-muted">Total Students</h6>
+                    <h2 class="stat-number text-success">{{ total_students }}</h2>
+                    <small class="text-muted">{{ total_enrollments }} enrollments total</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stats-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                    <h6 class="text-muted">Pending Requests</h6>
+                    <h2 class="stat-number text-warning">{{ pending_requests }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stats-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-video fa-2x text-info mb-2"></i>
+                    <h6 class="text-muted">Active Sessions</h6>
+                    <h2 class="stat-number text-info">{{ active_sessions }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h5><i class="fas fa-bolt text-primary me-2"></i>Quick Actions</h5>
+            <div class="row">
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="quick-action-card" onclick="location.href='{{ url_for('create_course') }}'">
+                        <i class="fas fa-plus-circle text-primary"></i>
+                        <h6>Create Course</h6>
+                        <small class="text-muted">Start a new course</small>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="quick-action-card" onclick="location.href='{{ url_for('generate_student_invite') }}'">
+                        <i class="fas fa-link text-success"></i>
+                        <h6>Student Invite</h6>
+                        <small class="text-muted">Generate registration link</small>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="quick-action-card" onclick="location.href='{{ url_for('manage_enrollment_requests') }}'">
+                        <i class="fas fa-user-plus text-warning"></i>
+                        <h6>Enrollment Requests</h6>
+                        <small class="text-muted">
+                            {% if pending_requests > 0 %}
+                                <span class="badge bg-danger">{{ pending_requests }} pending</span>
+                            {% else %}
+                                No pending requests
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="quick-action-card" onclick="location.href='{{ url_for('list_courses') }}'">
+                        <i class="fas fa-book text-info"></i>
+                        <h6>My Courses</h6>
+                        <small class="text-muted">View all courses</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Courses -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-book-open text-primary me-2"></i>My Courses</h5>
+                    <a href="{{ url_for('list_courses') }}" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if courses %}
+                        <div class="row">
+                            {% for course in courses %}
+                            <div class="col-md-4 col-lg-3 mb-3">
+                                <div class="course-card card h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <span class="badge bg-primary">{{ course.course_code }}</span>
+                                        </h6>
+                                        <p class="card-text small">{{ course.course_name|truncate(30) }}</p>
+                                        <div class="text-muted small">
+                                            <i class="fas fa-users me-1"></i>
+                                            {{ course.get_enrolled_count() }} students
+                                        </div>
+                                        <div class="text-muted small">
+                                            <i class="fas fa-clock me-1"></i>
+                                            {{ course.get_pending_requests_count() }} pending
+                                        </div>
+                                        <div class="mt-2">
+                                            <a href="{{ url_for('view_course', course_id=course.id) }}" 
+                                               class="btn btn-sm btn-outline-primary w-100">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">You haven't created any courses yet.</p>
+                            <a href="{{ url_for('create_course') }}" class="btn btn-primary">
+                                <i class="fas fa-plus-circle"></i> Create Your First Course
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Students -->
+    {% if recent_students %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-user-plus text-primary me-2"></i>Recent Students</h5>
+                    <span class="badge bg-primary">{{ recent_students|length }} recent</span>
+                </div>
+                <div class="card-body">
+                    {% for student in recent_students %}
+                        <div class="activity-item">
+                            <div class="activity-icon student">
+                                <i class="fas fa-user-graduate"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ student.fullname }}</strong>
+                                        <span class="badge bg-success ms-2">Student</span>
+                                    </div>
+                                    <small class="text-muted">
+                                        Joined: {{ student.created_at.strftime('%b %d, %Y') if student.created_at else 'N/A' }}
+                                    </small>
+                                </div>
+                                <small class="text-muted">{{ student.email }}</small>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Session Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .session-header {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+    }
+    .session-header h2 {
+        font-weight: 700;
+    }
+    .stat-card {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        height: 100%;
+    }
+    .stat-card .number {
+        font-size: 28px;
+        font-weight: 700;
+        color: #667eea;
+    }
+    .stat-card .number.present { color: #28a745; }
+    .stat-card .number.absent { color: #dc3545; }
+    .stat-card .label {
+        font-size: 12px;
+        color: #6c757d;
+    }
+    .student-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .student-item {
+        padding: 10px 15px;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .student-item:last-child {
+        border-bottom: none;
+    }
+    .student-item.present {
+        background: #d4edda;
+        border-left: 4px solid #28a745;
+    }
+    .student-item.absent {
+        background: #f8f9fa;
+        border-left: 4px solid #6c757d;
+    }
+    .student-item .confidence {
+        font-size: 12px;
+        color: #6c757d;
+    }
+    .token-display {
+        background: #e9ecef;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 24px;
+        letter-spacing: 6px;
+        display: inline-block;
+        font-weight: 700;
+    }
+    .session-status {
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+    .session-status.active {
+        background: #28a745;
+        color: white;
+    }
+    .session-status.closed {
+        background: #dc3545;
+        color: white;
+    }
+    .status-badge {
+        padding: 3px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .status-badge.present { background: #28a745; color: white; }
+    .status-badge.absent { background: #6c757d; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Session Header -->
+        <div class="session-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="course-code">{{ course.course_code }}</div>
+                    <h2>{{ course.course_name }}</h2>
+                    <p class="mb-0">
+                        <i class="fas fa-calendar-alt"></i> 
+                        {{ session.session_date.strftime('%A, %B %d, %Y') }}
+                        <span class="ms-3">
+                            <i class="fas fa-clock"></i> 
+                            {{ session.session_time.strftime('%I:%M %p') }}
+                        </span>
+                        <span class="ms-3">
+                            <i class="fas fa-tag"></i> 
+                            Topic: {{ session.topic or 'Regular Class' }}
+                        </span>
+                    </p>
+                </div>
+                <div>
+                    <span class="session-status {{ session.status }}">
+                        <i class="fas fa-{{ 'play' if session.status == 'active' else 'stop' }}"></i>
+                        {{ session.status.upper() }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="number">{{ enrolled_users|length }}</div>
+                    <div class="label">Total Students</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="number present">{{ records|length }}</div>
+                    <div class="label">Present</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="number absent">{{ enrolled_users|length - records|length }}</div>
+                    <div class="label">Absent</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="number" style="color:#ffc107;">
+                        {{ ((records|length / enrolled_users|length) * 100)|round(1) if enrolled_users|length > 0 else 0 }}%
+                    </div>
+                    <div class="label">Attendance Rate</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Token -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5><i class="fas fa-key"></i> Session Token</h5>
+                <div class="token-display">{{ session.session_token }}</div>
+                <button class="btn btn-sm btn-outline-primary ms-2" onclick="copyToken()">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+                <small class="text-muted ms-2">
+                    Share this token with students to mark attendance
+                </small>
+            </div>
+        </div>
+
+        <!-- Teacher Actions -->
+        {# FIX: `session` here is the AttendanceSession row passed in by the
+           route (render_template(..., session=session_obj, ...)), which has
+           no `user_role` attribute at all -- that's only ever on Flask's
+           real session object, which this local name shadows. Checking
+           session.user_role here silently evaluated to Undefined and was
+           never true, so this button never rendered for anyone, ever.
+           current_user_role is injected separately (see inject_current_user_role
+           context processor) precisely so it can't collide with this. #}
+        {% if session.status == 'active' and current_user_role in ['teacher', 'admin'] %}
+        <div class="card mb-4 border-danger">
+            <div class="card-body">
+                <h5><i class="fas fa-tools"></i> Session Controls</h5>
+                <form method="POST" action="{{ url_for('end_attendance_session', session_id=session.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('End this attendance session? Students will no longer be able to mark attendance.')">
+                        <i class="fas fa-stop"></i> End Session
+                    </button>
+                </form>
+                <small class="text-muted">
+                    Once ended, students cannot mark attendance for this session.
+                </small>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Student List -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-users"></i> Attendance List</h5>
+            </div>
+            <div class="card-body">
+                <div class="student-list">
+                    {% if enrolled_users %}
+                        {% for user in enrolled_users %}
+                        <div class="student-item {% if user.id in attended_ids %}present{% else %}absent{% endif %}">
+                            <div>
+                                <div>
+                                    <strong>{{ user.fullname }}</strong>
+                                    <span class="text-muted ms-2 small">{{ user.email }}</span>
+                                </div>
+                                <div class="confidence">
+                                    {% if user.id in attended_ids %}
+                                        {% for record in records %}
+                                            {% if record.student_id == user.id %}
+                                                <span class="text-success">
+                                                    <i class="fas fa-check-circle"></i> 
+                                                    Marked at {{ record.marked_at.strftime('%H:%M:%S') }}
+                                                    {% if record.face_confidence is not none %}
+                                                        (Confidence: {{ record.face_confidence|round(1) }}%)
+                                                    {% endif %}
+                                                </span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-muted">
+                                            <i class="fas fa-clock"></i> Not marked
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div>
+                                {% if user.id in attended_ids %}
+                                    <span class="status-badge present">Present</span>
+                                {% else %}
+                                    <span class="status-badge absent">Absent</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted text-center my-3">No students enrolled in this course.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Back Button -->
+        <div class="mt-3">
+            <a href="{{ url_for('view_course', course_id=course.id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Course
+            </a>
+            {% if session.status == 'active' %}
+            <a href="{{ url_for('mark_attendance') }}" class="btn btn-primary">
+                <i class="fas fa-camera"></i> Mark Attendance
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToken() {
+    const token = document.querySelector('.token-display').textContent.trim();
+    navigator.clipboard.writeText(token).then(() => {
+        alert('Session token copied: ' + token);
+    }).catch(() => {
+        const textarea = document.createElement('textarea');
+        textarea.value = token;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('Token copied: ' + token);
+    });
+}
+</script>
+{% endblock %}

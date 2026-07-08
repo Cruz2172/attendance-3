@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - FaceAttend{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        transition: transform 0.3s ease;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+    .stat-number {
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin: 0.5rem 0;
+    }
+    .stat-icon {
+        font-size: 2rem;
+        opacity: 0.6;
+    }
+    .quick-action-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+    .quick-action-card:hover {
+        border-color: #667eea;
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+    }
+    .activity-item {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #eaecf4;
+    }
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .activity-icon.user {
+        background: #e8f0fe;
+        color: #4e73df;
+    }
+    .activity-icon.course {
+        background: #e8f5e9;
+        color: #28a745;
+    }
+    .activity-icon.attendance {
+        background: #fff3e0;
+        color: #f6c23e;
+    }
+    .activity-icon.enrollment {
+        background: #f3e5f5;
+        color: #9c27b0;
+    }
+    .badge-pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+    .badge-approved {
+        background: #d4edda;
+        color: #155724;
+    }
+    .badge-rejected {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .system-health {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 1.5rem;
+        color: white;
+    }
+    .system-health .health-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .system-health .health-item:last-child {
+        border-bottom: none;
+    }
+    .system-health .health-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .system-health .health-status .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .system-health .health-status .dot.green {
+        background: #4caf50;
+    }
+    .system-health .health-status .dot.yellow {
+        background: #ffc107;
+    }
+    .system-health .health-status .dot.red {
+        background: #f44336;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="mb-1">
+                                <i class="fas fa-shield-alt me-2"></i>Welcome, {{ user.fullname }}!
+                            </h2>
+                            <p class="mb-0 opacity-75">
+                                <i class="fas fa-clock me-1"></i>
+                                {{ now.strftime('%A, %B %d, %Y at %I:%M %p') }}
+                            </p>
+                            <small class="opacity-75">
+                                <i class="fas fa-user-cog me-1"></i>Administrator Dashboard
+                            </small>
+                        </div>
+                        <div>
+                            <span class="badge bg-light text-primary p-2">
+                                <i class="fas fa-database me-1"></i>
+                                System Status: <span class="text-success">Online</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stats-card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0 opacity-75">Total Users</h6>
+                            <h2 class="stat-number">{{ total_users|default(0) }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                    <small class="opacity-75">
+                        <i class="fas fa-user-plus me-1"></i>
+                        {{ (total_users|default(0) - total_students|default(0) - total_teachers|default(0))|default(0) }} admins
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stats-card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0 opacity-75">Students</h6>
+                            <h2 class="stat-number">{{ total_students|default(0) }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-user-graduate"></i>
+                        </div>
+                    </div>
+                    <small class="opacity-75">
+                        <i class="fas fa-check-circle me-1"></i>
+                        {{ approved_students|default(0) }} approved
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stats-card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0 opacity-75">Courses</h6>
+                            <h2 class="stat-number">{{ total_courses|default(0) }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-book"></i>
+                        </div>
+                    </div>
+                    <small class="opacity-75">
+                        <i class="fas fa-check-circle me-1"></i>
+                        {{ active_courses|default(0) }} active
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card stats-card bg-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0 opacity-75">Pending Approvals</h6>
+                            <h2 class="stat-number">{{ pending_approvals|default(0) }}</h2>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <small class="opacity-75">
+                        <i class="fas fa-users me-1"></i>
+                        Users waiting for approval
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h5 class="mb-3"><i class="fas fa-bolt text-primary me-2"></i>Quick Actions</h5>
+            <div class="row">
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="card quick-action-card" onclick="location.href='{{ url_for('manage_users') }}'">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users-cog fa-2x text-primary mb-2"></i>
+                            <h6>Manage Users</h6>
+                            <small class="text-muted">Approve, edit, or delete users</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="card quick-action-card" onclick="location.href='{{ url_for('manage_invites') }}'">
+                        <div class="card-body text-center">
+                            <i class="fas fa-ticket-alt fa-2x text-success mb-2"></i>
+                            <h6>Invite Codes</h6>
+                            <small class="text-muted">Generate and manage invites</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="card quick-action-card" onclick="location.href='{{ url_for('list_courses') }}'">
+                        <div class="card-body text-center">
+                            <i class="fas fa-book fa-2x text-info mb-2"></i>
+                            <h6>View Courses</h6>
+                            <small class="text-muted">Manage all courses</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-2">
+                    <div class="card quick-action-card" onclick="location.href='{{ url_for('search_students_page') }}'">
+                        <div class="card-body text-center">
+                            <i class="fas fa-search fa-2x text-warning mb-2"></i>
+                            <h6>Search Students</h6>
+                            <small class="text-muted">Find and manage students</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Users -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-user-plus text-primary me-2"></i>Recent Users</h5>
+                    <a href="{{ url_for('manage_users') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_users %}
+                        {% for user in recent_users %}
+                            <div class="activity-item d-flex align-items-center">
+                                <div class="activity-icon user me-3">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>{{ user.fullname }}</strong>
+                                            <span class="badge bg-secondary ms-2">{{ user.role|capitalize }}</span>
+                                            {% if not user.is_approved %}
+                                                <span class="badge bg-warning text-dark">Pending</span>
+                                            {% endif %}
+                                        </div>
+                                        <small class="text-muted">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else 'N/A' }}</small>
+                                    </div>
+                                    <small class="text-muted">{{ user.email }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No recent users</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Attendance -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-clock text-primary me-2"></i>Recent Attendance</h5>
+                    <span class="badge bg-primary">Today</span>
+                </div>
+                <div class="card-body">
+                    {% if recent_attendance %}
+                        {% for record in recent_attendance %}
+                            <div class="activity-item d-flex align-items-center">
+                                <div class="activity-icon attendance me-3">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>{{ record.student_name }}</strong>
+                                            <span class="badge bg-success ms-2">Present</span>
+                                        </div>
+                                        <small class="text-muted">{{ record.time }}</small>
+                                    </div>
+                                    <small class="text-muted">ID: {{ record.student_id }} | {{ record.date }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No attendance records yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="system-health">
+                <h5 class="mb-3"><i class="fas fa-heartbeat me-2"></i>System Health</h5>
+                <div class="row">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="health-item">
+                            <span>Database</span>
+                            <span class="health-status">
+                                <span class="dot green"></span> Online
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="health-item">
+                            <span>Storage</span>
+                            <span class="health-status">
+                                <span class="dot green"></span> {{ storage_used|default('2.3') }}GB / {{ storage_total|default('10') }}GB
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="health-item">
+                            <span>Face Recognition</span>
+                            <span class="health-status">
+                                <span class="dot green"></span> Active
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="health-item">
+                            <span>Recent Activity</span>
+                            <span class="health-status">
+                                <span class="dot green"></span> {{ recent_activity_count|default(0) }} events
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh statistics every 30 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        setInterval(function() {
+            if (document.hidden) return;
+            
+            fetch('/attendance_stats')
+                .then(response => response.json())
+                .then(data => {
+                    // Update stats if needed
+                    console.log('Stats updated:', data);
+                })
+                .catch(error => console.error('Error updating stats:', error));
+        }, 30000);
+    });
+</script>
+{% endblock %}

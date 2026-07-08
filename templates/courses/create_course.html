@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Create Course - Face Attendance{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card fade-in">
+            <div class="card-header bg-transparent">
+                <h4 class="mb-0">
+                    <i class="fas fa-plus-circle text-primary"></i> Create New Course
+                </h4>
+                <small class="text-muted">Fill in the details below to create a new course</small>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('create_course') }}">
+                    <div class="mb-3">
+                        <label for="course_code" class="form-label fw-bold">
+                            Course Code <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="course_code" 
+                               name="course_code" 
+                               placeholder="e.g., MATH101" 
+                               required>
+                        <small class="text-muted">Unique identifier (uppercase letters and numbers)</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="course_name" class="form-label fw-bold">
+                            Course Name <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="course_name" 
+                               name="course_name" 
+                               placeholder="e.g., Introduction to Calculus" 
+                               required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label fw-bold">Description</label>
+                        <textarea class="form-control" 
+                                  id="description" 
+                                  name="description" 
+                                  rows="3"
+                                  placeholder="Brief description of the course content and objectives"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="schedule" class="form-label fw-bold">Schedule</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="schedule" 
+                               name="schedule" 
+                               placeholder="e.g., Mon/Wed 10:00 AM - 11:30 AM">
+                        <small class="text-muted">Enter the day(s) and time(s) for this course</small>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('list_courses') }}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Create Course
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6><i class="fas fa-lightbulb text-warning"></i> Quick Tips</h6>
+                <ul class="text-muted small mb-0">
+                    <li>Course codes should be unique and easy to remember (e.g., CS101, MATH201)</li>
+                    <li>Include a clear schedule so students know when classes are held</li>
+                    <li>After creating the course, you can generate enrollment tokens for students</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('course_code').addEventListener('input', function() {
+    this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+});
+</script>
+{% endblock %}

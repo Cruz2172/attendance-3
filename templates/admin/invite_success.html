@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Invite Generated - Success{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="mb-4">
+                    <i class="fas fa-check-circle text-success" style="font-size: 64px;"></i>
+                </div>
+                
+                <h2 class="mb-3">✅ Invite Code Generated!</h2>
+                
+                <div class="alert alert-success">
+                    Your invite code has been created successfully.
+                </div>
+
+                <div class="card bg-light mb-4">
+                    <div class="card-body">
+                        <h5>Invite Details</h5>
+                        <div class="row">
+                            <div class="col-md-6 text-start">
+                                <strong>Code:</strong>
+                                <code class="bg-white p-1 rounded d-block mt-1">{{ invite.code }}</code>
+                            </div>
+                            <div class="col-md-6 text-start">
+                                <strong>Role:</strong>
+                                <span class="badge {% if invite.role == 'admin' %}bg-danger{% elif invite.role == 'teacher' %}bg-warning{% else %}bg-info{% endif %} d-block mt-1">
+                                    {{ invite.role|capitalize }}
+                                </span>
+                            </div>
+                            <div class="col-md-6 text-start mt-2">
+                                <strong>Uses:</strong>
+                                <span class="d-block mt-1">{{ invite.max_uses if invite.max_uses != -1 else 'Unlimited' }}</span>
+                            </div>
+                            <div class="col-md-6 text-start mt-2">
+                                <strong>Expires:</strong>
+                                <span class="d-block mt-1">{{ invite.expires_at.strftime('%Y-%m-%d %H:%M') if invite.expires_at else 'Never' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card bg-light mb-4">
+                    <div class="card-body">
+                        <h5><i class="fas fa-link"></i> Invite Link</h5>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="inviteLink" value="{{ invite_link }}" readonly>
+                            <button class="btn btn-primary" onclick="copyInviteLink()">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <small class="text-muted">Share this link with users to register</small>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    <a href="{{ url_for('manage_invites') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Invites
+                    </a>
+                    <a href="{{ url_for('generate_invite') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Generate Another
+                    </a>
+                    <!-- Fixed Open Invite Link Button -->
+                    <a href="{{ invite_link }}" target="_blank" class="btn btn-success">
+                        <i class="fas fa-external-link-alt"></i> Open Invite Link
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyInviteLink() {
+    const input = document.getElementById('inviteLink');
+    input.select();
+    input.setSelectionRange(0, 99999);
+    
+    try {
+        document.execCommand('copy');
+        const btn = document.querySelector('.input-group .btn');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        btn.className = 'btn btn-success';
+        setTimeout(function() {
+            btn.innerHTML = originalHTML;
+            btn.className = 'btn btn-primary';
+        }, 3000);
+    } catch (err) {
+        alert('Failed to copy. Please manually copy the link.');
+    }
+}
+
+// Alternative copy method using modern clipboard API
+function copyInviteLinkModern() {
+    const input = document.getElementById('inviteLink');
+    const link = input.value;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(function() {
+            const btn = document.querySelector('.input-group .btn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            btn.className = 'btn btn-success';
+            setTimeout(function() {
+                btn.innerHTML = originalHTML;
+                btn.className = 'btn btn-primary';
+            }, 3000);
+        }).catch(function() {
+            // Fallback to old method
+            copyInviteLink();
+        });
+    } else {
+        copyInviteLink();
+    }
+}
+
+// Also add keyboard shortcut (Ctrl+C) for the input field
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('inviteLink');
+    if (input) {
+        input.addEventListener('click', function() {
+            this.select();
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Invites - Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 style="color: #667eea;">
+                        <i class="fas fa-ticket-alt"></i> Manage Invite Codes
+                    </h2>
+                    <a href="{{ url_for('generate_invite') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Generate New Invite
+                    </a>
+                </div>
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message|safe }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Stats Summary -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h3>{{ invites|length }}</h3>
+                                <small>Total Invites</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h3>{{ invites|selectattr('used', 'equalto', False)|selectattr('expires_at', 'none')|list|length }}</h3>
+                                <small>Active</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body text-center">
+                                <h3>{{ invites|selectattr('used', 'equalto', True)|list|length }}</h3>
+                                <small>Used</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h3>{{ invites|selectattr('expires_at', 'defined')|selectattr('expires_at', 'lt', now)|list|length }}</h3>
+                                <small>Expired</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invites Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Code</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Used / Max</th>
+                                <th>Created By</th>
+                                <th>Created</th>
+                                <th>Expires</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if invites %}
+                                {% for invite in invites %}
+                                <tr>
+                                    <td>
+                                        <code class="bg-light p-1 rounded">{{ invite.code }}</code>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if invite.role == 'admin' %}bg-danger{% elif invite.role == 'teacher' %}bg-warning{% else %}bg-info{% endif %}">
+                                            {{ invite.role|capitalize }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if invite.used %}
+                                            <span class="badge bg-secondary">Used</span>
+                                        {% elif invite.expires_at and invite.expires_at < now %}
+                                            <span class="badge bg-danger">Expired</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if invite.max_uses == -1 %}
+                                            <span class="badge bg-primary">Unlimited</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ invite.uses_count }} / {{ invite.max_uses }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set creator = User.query.get(invite.created_by) %}
+                                        {% if creator %}
+                                            {{ creator.fullname }}
+                                        {% else %}
+                                            <span class="text-muted">Unknown</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ invite.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        {% if invite.expires_at %}
+                                            {{ invite.expires_at.strftime('%Y-%m-%d %H:%M') }}
+                                        {% else %}
+                                            <span class="text-muted">Never</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary copy-btn" 
+                                                    data-code="{{ invite.code }}"
+                                                    title="Copy invite link">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                            {% if not invite.used and not (invite.expires_at and invite.expires_at < now) %}
+                                            <form method="POST" action="{{ url_for('delete_invite', invite_id=invite.id) }}" 
+                                                  style="display: inline;" 
+                                                  onsubmit="return confirm('Are you sure you want to delete this invite code?');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-outline-danger" title="Delete invite">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-3x d-block mb-2"></i>
+                                        <h5>No invite codes found</h5>
+                                        <p>Click "Generate New Invite" to create your first invite code.</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Copy invite code to clipboard
+    document.querySelectorAll('.copy-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const code = this.dataset.code;
+            const link = `${window.location.origin}/register?code=${code}`;
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(link).then(function() {
+                    // Show feedback
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check"></i>';
+                    btn.className = 'btn btn-outline-success btn-sm';
+                    setTimeout(function() {
+                        btn.innerHTML = originalHTML;
+                        btn.className = 'btn btn-outline-primary btn-sm';
+                    }, 2000);
+                    
+                    // Show alert
+                    showToast('Invite link copied to clipboard!', 'success');
+                }).catch(function() {
+                    copyToClipboardFallback(link);
+                });
+            } else {
+                copyToClipboardFallback(link);
+            }
+        });
+    });
+});
+
+// Fallback copy method
+function copyToClipboardFallback(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand('copy');
+        alert('Invite link copied to clipboard!');
+    } catch (err) {
+        alert('Failed to copy. Please manually copy: ' + text);
+    }
+    document.body.removeChild(textarea);
+}
+
+// Toast notification
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 400px;';
+    toast.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(function() {
+        toast.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}

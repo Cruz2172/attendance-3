@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Generate Invite - Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 style="color: #667eea;">
+                        <i class="fas fa-plus-circle"></i> Generate Invite Code
+                    </h2>
+                    <a href="{{ url_for('manage_invites') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Invites
+                    </a>
+                </div>
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message|safe }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('generate_invite') }}" id="inviteForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <!-- Role Selection -->
+                    <div class="mb-4">
+                        <label for="role" class="form-label fw-bold">User Role</label>
+                        <select class="form-select form-select-lg" id="role" name="role" required>
+                            <option value="student">Student</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="admin">Administrator</option>
+                        </select>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> 
+                            <span id="roleDescription">Students can only view attendance and mark their own attendance.</span>
+                        </div>
+                    </div>
+
+                    <!-- Max Uses -->
+                    <div class="mb-4">
+                        <label for="max_uses" class="form-label fw-bold">Maximum Uses</label>
+                        <select class="form-select" id="max_uses" name="max_uses">
+                            <option value="1">1 use (single use)</option>
+                            <option value="5">5 uses</option>
+                            <option value="10">10 uses</option>
+                            <option value="25">25 uses</option>
+                            <option value="50">50 uses</option>
+                            <option value="100">100 uses</option>
+                            <option value="-1">Unlimited</option>
+                        </select>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> 
+                            How many times this invite code can be used.
+                        </div>
+                    </div>
+
+                    <!-- Expiration -->
+                    <div class="mb-4">
+                        <label for="expires_days" class="form-label fw-bold">Expiration</label>
+                        <select class="form-select" id="expires_days" name="expires_days">
+                            <option value="">Never expires</option>
+                            <option value="1">1 day</option>
+                            <option value="7">7 days</option>
+                            <option value="30">30 days</option>
+                            <option value="90">90 days</option>
+                            <option value="365">1 year</option>
+                        </select>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle"></i> 
+                            When should this invite code expire?
+                        </div>
+                    </div>
+
+                    <!-- Preview -->
+                    <div class="mb-4 p-3 bg-light rounded">
+                        <h6><i class="fas fa-eye"></i> Preview</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Role:</strong> <span id="previewRole">Student</span>
+                            </div>
+                            <div class="col-6">
+                                <strong>Uses:</strong> <span id="previewUses">1</span>
+                            </div>
+                            <div class="col-12 mt-1">
+                                <strong>Expires:</strong> <span id="previewExpires">Never</span>
+                            </div>
+                            <div class="col-12 mt-2">
+                                <strong>Invite URL:</strong><br>
+                                <code id="previewUrl" class="bg-white p-1 rounded">
+                                    {{ request.host_url }}register?code=YOUR_CODE_HERE
+                                </code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100" id="generateBtn">
+                        <i class="fas fa-magic"></i> Generate Invite Code
+                    </button>
+                </form>
+
+                <!-- Quick Actions -->
+                <hr class="my-4">
+                <h6 class="mb-3">Quick Actions</h6>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-outline-success btn-sm" onclick="quickGenerate('student')">
+                        <i class="fas fa-user-graduate"></i> Student Invite
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="quickGenerate('teacher')">
+                        <i class="fas fa-chalkboard-teacher"></i> Teacher Invite
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="quickGenerate('admin')">
+                        <i class="fas fa-user-shield"></i> Admin Invite
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Information Card -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6><i class="fas fa-info-circle text-info"></i> How Invite Codes Work</h6>
+                <ul class="mb-0">
+                    <li>Invite codes allow users to register with specific roles</li>
+                    <li>Each code can be used multiple times (based on your settings)</li>
+                    <li>Codes expire after the set date or can be set to never expire</li>
+                    <li>Students registered with invite codes get auto-approved</li>
+                    <li>Admins and Teachers need manual approval by default</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update preview when form changes
+    const roleSelect = document.getElementById('role');
+    const maxUsesSelect = document.getElementById('max_uses');
+    const expiresSelect = document.getElementById('expires_days');
+    
+    const roleDescriptions = {
+        'student': 'Students can only view attendance and mark their own attendance.',
+        'teacher': 'Teachers can enroll students and mark attendance.',
+        'admin': 'Administrators have full access to all features.'
+    };
+    
+    function updatePreview() {
+        const role = roleSelect.value;
+        const maxUses = maxUsesSelect.value;
+        const expires = expiresSelect.value;
+        
+        document.getElementById('roleDescription').textContent = roleDescriptions[role] || '';
+        document.getElementById('previewRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        document.getElementById('previewUses').textContent = maxUses === '-1' ? 'Unlimited' : maxUses;
+        document.getElementById('previewExpires').textContent = expires ? `${expires} days` : 'Never';
+    }
+    
+    roleSelect.addEventListener('change', updatePreview);
+    maxUsesSelect.addEventListener('change', updatePreview);
+    expiresSelect.addEventListener('change', updatePreview);
+    
+    // Initial preview
+    updatePreview();
+});
+
+function quickGenerate(role) {
+    document.getElementById('role').value = role;
+    document.getElementById('max_uses').value = '1';
+    document.getElementById('expires_days').value = '';
+    
+    // Trigger update
+    document.getElementById('role').dispatchEvent(new Event('change'));
+    
+    // Scroll to form
+    document.getElementById('inviteForm').scrollIntoView({ behavior: 'smooth' });
+    
+    // Highlight the role
+    const select = document.getElementById('role');
+    select.style.borderColor = '#28a745';
+    select.style.boxShadow = '0 0 0 0.2rem rgba(40, 167, 69, 0.25)';
+    setTimeout(function() {
+        select.style.borderColor = '';
+        select.style.boxShadow = '';
+    }, 3000);
+}
+
+// Prevent double submission
+document.getElementById('inviteForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('generateBtn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    btn.disabled = true;
+});
+</script>
+{% endblock %}

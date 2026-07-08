@@ -1,0 +1,661 @@
+{% extends "base.html" %}
+
+{% block title %}Search Students - FaceAttend{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .search-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .search-header h1 {
+        font-weight: 700;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .search-header p {
+        opacity: 0.9;
+        margin-bottom: 0;
+    }
+
+    .search-box {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+        border: 1px solid #eaecf4;
+    }
+
+    .search-input-group {
+        position: relative;
+    }
+
+    .search-input-group .form-control {
+        border-radius: 50px;
+        padding: 0.75rem 1.5rem;
+        padding-left: 3rem;
+        border: 2px solid #eaecf4;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background-color: #f8f9fc;
+    }
+
+    .search-input-group .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.15);
+        background-color: white;
+    }
+
+    .search-input-group .search-icon {
+        position: absolute;
+        left: 1.2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #858796;
+        font-size: 1.2rem;
+        z-index: 10;
+    }
+
+    .search-input-group .clear-btn {
+        position: absolute;
+        right: 1.2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #858796;
+        display: none;
+        z-index: 10;
+        background: none;
+        border: none;
+        font-size: 1.2rem;
+        padding: 0;
+    }
+
+    .search-input-group .clear-btn:hover {
+        color: #e74a3b;
+    }
+
+    .search-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .search-actions .btn {
+        border-radius: 50px;
+        padding: 0.5rem 1.5rem;
+    }
+
+    .stats-badge {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50px;
+        padding: 0.5rem 1.5rem;
+        margin-left: 0.5rem;
+        font-weight: 600;
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        display: inline-block;
+    }
+
+    .students-table {
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        border: 1px solid #eaecf4;
+    }
+
+    .students-table .table {
+        margin-bottom: 0;
+    }
+
+    .students-table .table thead th {
+        background: #f8f9fc;
+        color: #5a5c69;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        padding: 1rem 1.5rem;
+        border-bottom: 2px solid #eaecf4;
+    }
+
+    .students-table .table tbody td {
+        padding: 1rem 1.5rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #eaecf4;
+    }
+
+    .student-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .student-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .student-name {
+        font-weight: 600;
+        color: #5a5c69;
+        margin-bottom: 0;
+    }
+
+    .student-email {
+        color: #858796;
+        font-size: 0.875rem;
+        margin-bottom: 0;
+    }
+
+    .badge-status {
+        padding: 0.35rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-status.active {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .badge-status.pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .action-buttons .btn {
+        padding: 0.25rem 0.6rem;
+        font-size: 0.75rem;
+        border-radius: 50px;
+        margin: 0 0.15rem;
+    }
+
+    .no-results {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .no-results i {
+        font-size: 4rem;
+        color: #dddfeb;
+        margin-bottom: 1.5rem;
+    }
+
+    .no-results h4 {
+        color: #5a5c69;
+        margin-bottom: 0.5rem;
+    }
+
+    .no-results p {
+        color: #858796;
+    }
+
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .table-footer {
+        background: #f8f9fc;
+        padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        border-top: 1px solid #eaecf4;
+    }
+
+    .table-footer .info-text {
+        color: #858796;
+        font-size: 0.875rem;
+        margin-bottom: 0;
+    }
+
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .search-header {
+            padding: 1.5rem;
+        }
+
+        .search-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .search-box {
+            padding: 1rem;
+        }
+
+        .students-table .table thead th,
+        .students-table .table tbody td {
+            padding: 0.75rem 1rem;
+        }
+
+        .table-footer {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+        }
+
+        .search-actions {
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+
+        .stats-badge {
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-container">
+    <!-- Header -->
+    <div class="search-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1><i class="fas fa-users me-2"></i>Search Students</h1>
+                <p>
+                    {% if current_user_role == 'admin' %}
+                        View and manage all students in the system
+                    {% else %}
+                        View students enrolled in your courses
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <span class="stats-badge">
+                    <i class="fas fa-user-graduate"></i>
+                    <span id="totalStudents">0</span> Students
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Box -->
+    <div class="search-box">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-8">
+                <div class="search-input-group">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" 
+                           id="searchInput" 
+                           class="form-control" 
+                           placeholder="Search by name, student ID, or email..."
+                           autocomplete="off">
+                    <button class="clear-btn" id="clearSearch" title="Clear search">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="search-actions">
+                    <button class="btn btn-outline-primary" id="refreshBtn">
+                        <i class="fas fa-sync me-1"></i>Refresh
+                    </button>
+                    <button class="btn btn-success" id="exportBtn">
+                        <i class="fas fa-download me-1"></i>Export
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Searching for students...</p>
+    </div>
+
+    <!-- Results Table -->
+    <div class="students-table fade-in" id="resultsContainer">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Student ID</th>
+                        <th>Course</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="studentsTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            <i class="fas fa-spinner fa-spin me-2"></i> Loading students...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer">
+            <p class="info-text" id="resultCount">
+                <i class="fas fa-info-circle me-1"></i>
+                Showing <span id="displayCount">0</span> students
+            </p>
+            <p class="info-text" id="lastUpdated">
+                <i class="fas fa-clock me-1"></i>
+                Last updated: <span id="updateTime">Just now</span>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Get current user role from session
+    const currentUserRole = '{{ current_user_role }}';
+    const isAdmin = currentUserRole === 'admin';
+
+    // DOM Elements
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const studentsTableBody = document.getElementById('studentsTableBody');
+    const totalStudentsSpan = document.getElementById('totalStudents');
+    const displayCountSpan = document.getElementById('displayCount');
+    const updateTimeSpan = document.getElementById('updateTime');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const resultsContainer = document.getElementById('resultsContainer');
+
+    let students = [];
+    let filteredStudents = [];
+    let searchTimeout = null;
+
+    function getInitials(name) {
+        if (!name) return '?';
+        return name
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase())
+            .slice(0, 2)
+            .join('');
+    }
+
+    function renderStudents(studentList) {
+        if (!studentList || studentList.length === 0) {
+            studentsTableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="no-results">
+                        <i class="fas fa-search"></i>
+                        <h4>No students found</h4>
+                        <p>Try adjusting your search terms or refresh the page.</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        let html = '';
+        studentList.forEach(student => {
+            const isApproved = student.is_approved !== false;
+            const statusBadge = isApproved 
+                ? '<span class="badge badge-status active"><i class="fas fa-check-circle me-1"></i>Active</span>'
+                : '<span class="badge badge-status pending"><i class="fas fa-clock me-1"></i>Pending</span>';
+
+            html += `
+                <tr class="fade-in">
+                    <td>
+                        <div class="student-info">
+                            <div class="student-avatar">${getInitials(student.fullname)}</div>
+                            <div>
+                                <p class="student-name">${student.fullname}</p>
+                                <p class="student-email">${student.email}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td><code>${student.student_id}</code></td>
+                    <td>${student.course}</td>
+                    <td>${statusBadge}</td>
+                    <td class="text-end">
+                        <div class="action-buttons">
+                            <button class="btn btn-sm btn-outline-primary view-btn" data-id="${student.id}" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${isAdmin ? `
+                                <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${student.id}" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        studentsTableBody.innerHTML = html;
+
+        // Update counts
+        totalStudentsSpan.textContent = students.length;
+        displayCountSpan.textContent = studentList.length;
+        updateTimeSpan.textContent = new Date().toLocaleTimeString();
+
+        // Event listeners for view buttons
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const student = students.find(s => s.id == id);
+                if (student) {
+                    alert(`Student Details:\n\nName: ${student.fullname}\nID: ${student.student_id}\nEmail: ${student.email}\nCourse: ${student.course}\nStatus: ${student.is_approved ? 'Active' : 'Pending'}`);
+                }
+            });
+        });
+
+        // Event listeners for delete buttons (admin only)
+        if (isAdmin) {
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    const student = students.find(s => s.id == id);
+                    if (student && confirm(`Are you sure you want to delete ${student.fullname}? This action cannot be undone.`)) {
+                        const btn = this;
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                        btn.disabled = true;
+                        
+                        fetch(`/admin/delete-student/${id}`, { 
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                students = students.filter(s => s.id != id);
+                                applyFilters();
+                                alert(`✅ ${student.fullname} deleted successfully.`);
+                            } else {
+                                alert('Error deleting student: ' + (data.error || 'Unknown error'));
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Error deleting student. Please try again.');
+                        })
+                        .finally(() => {
+                            btn.innerHTML = originalText;
+                            btn.disabled = false;
+                        });
+                    }
+                });
+            });
+        }
+    }
+
+    function loadStudents() {
+        const query = searchInput.value.trim();
+        const url = query ? `/search_students?q=${encodeURIComponent(query)}` : '/search_students';
+        
+        // Show loading
+        loadingSpinner.style.display = 'block';
+        resultsContainer.style.display = 'none';
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                loadingSpinner.style.display = 'none';
+                resultsContainer.style.display = 'block';
+                
+                if (data.error) {
+                    console.error('Error:', data.error);
+                    alert('Error loading students: ' + data.error);
+                    return;
+                }
+                
+                students = data;
+                filteredStudents = [...students];
+                renderStudents(filteredStudents);
+            })
+            .catch(error => {
+                loadingSpinner.style.display = 'none';
+                resultsContainer.style.display = 'block';
+                console.error('Error:', error);
+                studentsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-danger py-4">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            Error loading students: ${error.message}
+                            <br><small class="text-muted">Please try refreshing the page.</small>
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+
+    function applyFilters() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        
+        if (!searchTerm) {
+            filteredStudents = [...students];
+        } else {
+            filteredStudents = students.filter(student => {
+                return student.fullname.toLowerCase().includes(searchTerm) ||
+                       student.student_id.toLowerCase().includes(searchTerm) ||
+                       student.email.toLowerCase().includes(searchTerm) ||
+                       student.course.toLowerCase().includes(searchTerm);
+            });
+        }
+
+        renderStudents(filteredStudents);
+        clearSearchBtn.style.display = searchTerm ? 'block' : 'none';
+    }
+
+    function exportData() {
+        const dataToExport = filteredStudents.length > 0 ? filteredStudents : students;
+        
+        if (dataToExport.length === 0) {
+            alert('No students to export.');
+            return;
+        }
+
+        const headers = ['Student ID', 'Full Name', 'Email', 'Course', 'Status'];
+        const rows = dataToExport.map(s => [
+            s.student_id,
+            s.fullname,
+            s.email,
+            s.course,
+            s.is_approved !== false ? 'Active' : 'Pending'
+        ]);
+
+        let csv = headers.join(',') + '\n';
+        rows.forEach(row => {
+            csv += row.join(',') + '\n';
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `students_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+    // Event Listeners
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(applyFilters, 300);
+    });
+
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        searchInput.focus();
+        applyFilters();
+    });
+
+    refreshBtn.addEventListener('click', function() {
+        loadStudents();
+    });
+
+    exportBtn.addEventListener('click', function() {
+        exportData();
+    });
+
+    // Keyboard shortcuts
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            this.value = '';
+            applyFilters();
+            this.blur();
+        }
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStudents();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance History - FaceAttend{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1><i class="fas fa-history text-primary"></i> Attendance History</h1>
+
+    <!-- Summary -->
+    <div class="row mt-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>Total Sessions</h5>
+                    <h2 class="text-primary">{{ total_sessions|default(0) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>Present</h5>
+                    <h2 class="text-success">{{ present_count|default(0) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>Absent</h5>
+                    <h2 class="text-danger">{{ absent_count|default(0) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5>Attendance Rate</h5>
+                    <h2 class="text-info">{{ attendance_rate|default(0) }}%</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label>Course</label>
+                    <select name="course" class="form-select">
+                        <option value="">All Courses</option>
+                        {% for course in courses %}
+                            <option value="{{ course.id }}" 
+                                    {% if selected_course == course.id %}selected{% endif %}>
+                                {{ course.course_code }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>From</label>
+                    <input type="date" name="from_date" class="form-control" value="{{ from_date or '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label>To</label>
+                    <input type="date" name="to_date" class="form-control" value="{{ to_date or '' }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Filter
+                    </button>
+                    <a href="{{ url_for('student_attendance_history') }}" class="btn btn-secondary w-100 ms-2">
+                        <i class="fas fa-undo"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Records -->
+    <div class="card">
+        <div class="card-body p-0">
+            {% if records %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Course</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Topic</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in records %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ record.course_code }}</td>
+                                    <td>{{ record.date.strftime('%b %d, %Y') if record.date else 'N/A' }}</td>
+                                    <td>{{ record.time.strftime('%I:%M %p') if record.time else 'N/A' }}</td>
+                                    <td>{{ record.topic or 'Regular Class' }}</td>
+                                    <td>
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle"></i> Present
+                                        </span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-alt fa-3x text-muted"></i>
+                    <p class="text-muted">No attendance records found.</p>
+                    <a href="{{ url_for('mark_attendance') }}" class="btn btn-success">
+                        <i class="fas fa-check-circle"></i> Mark Attendance
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

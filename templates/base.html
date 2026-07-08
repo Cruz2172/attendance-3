@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Facial Recognition Attendance System{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+
+    {% if config.get('USE_CUSTOM_CSS', True) %}
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% endif %}
+
+    <style>
+        :root {
+            --primary-gradient-start: #667eea;
+            --primary-gradient-end: #764ba2;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar-custom {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar-custom .navbar-brand {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .navbar-custom .navbar-brand i {
+            color: var(--primary-gradient-start);
+        }
+
+        .navbar-custom .nav-link {
+            color: #555;
+            transition: all 0.3s ease;
+            border-radius: 5px;
+            padding: 8px 15px;
+            font-size: 0.95rem;
+        }
+
+        .navbar-custom .nav-link:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--primary-gradient-start);
+        }
+
+        .navbar-custom .nav-link.active {
+            background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+            color: white !important;
+        }
+
+        .navbar-custom .nav-link i {
+            margin-right: 6px;
+            width: 18px;
+            text-align: center;
+        }
+
+        .container {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.25);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--primary-gradient-start), var(--primary-gradient-end));
+            border: none;
+            padding: 10px 25px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.7;
+            transform: none;
+        }
+
+        .flash-messages {
+            margin-top: 20px;
+        }
+
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .user-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .user-badge-admin {
+            background: #dc3545;
+            color: white;
+        }
+
+        .user-badge-teacher {
+            background: #0d6efd;
+            color: white;
+        }
+
+        .user-badge-student {
+            background: #198754;
+            color: white;
+        }
+
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            color: white;
+            padding: 20px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .badge-pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+
+            .card {
+                margin: 10px 0;
+            }
+
+            .navbar-custom .navbar-nav {
+                margin-top: 10px;
+            }
+
+            .navbar-custom .nav-link {
+                padding: 8px 15px;
+                border-radius: 5px;
+            }
+
+            .navbar-toggler {
+                border: none;
+                padding: 5px 10px;
+            }
+
+            .navbar-toggler:focus {
+                box-shadow: none;
+            }
+
+            .navbar-toggler i {
+                font-size: 24px;
+                color: #333;
+            }
+        }
+
+        /* Spinner Overlay */
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+
+        .spinner-overlay.show {
+            display: flex;
+        }
+
+        .spinner-overlay .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-gradient-end);
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') if session.get('user_id') else url_for('home') }}">
+                <i class="fas fa-fingerprint"></i>
+                Face Attendance
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if session.get('user_id') %}
+                        <!-- User Info Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-user-circle"></i>
+                                <span class="d-none d-md-inline">{{ session.get('user_name', 'User') }}</span>
+                                <span class="user-badge user-badge-{{ session.get('user_role', 'student') }} ms-1">
+                                    {{ session.get('user_role', 'student')|capitalize }}
+                                </span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('dashboard') }}">
+                                        <i class="fas fa-chart-pie"></i> Dashboard
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="{{ url_for('logout') }}"
+                                       onclick="return confirm('Are you sure you want to logout?');">
+                                        <i class="fas fa-sign-out-alt"></i> Logout
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- STUDENT NAVIGATION - SIMPLIFIED -->
+                        {% if session.get('user_role') == 'student' %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'student_dashboard' %}active{% endif %}"
+                               href="{{ url_for('student_dashboard') }}">
+                                <i class="fas fa-chart-pie"></i> Dashboard
+                            </a>
+                        </li>
+                        <!-- Removed all other student links -->
+                        {% endif %}
+
+                        <!-- TEACHER NAVIGATION -->
+                        {% if session.get('user_role') == 'teacher' %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'teacher_dashboard' %}active{% endif %}"
+                               href="{{ url_for('teacher_dashboard') }}">
+                                <i class="fas fa-chart-pie"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'list_courses' %}active{% endif %}"
+                               href="{{ url_for('list_courses') }}">
+                                <i class="fas fa-chalkboard"></i> My Courses
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'manage_enrollment_requests' %}active{% endif %}"
+                               href="{{ url_for('manage_enrollment_requests') }}">
+                                <i class="fas fa-user-plus"></i> Requests
+                                {% if pending_enrollment_requests is defined and pending_enrollment_requests > 0 %}
+                                <span class="badge bg-danger badge-pulse">{{ pending_enrollment_requests }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'create_course' %}active{% endif %}"
+                               href="{{ url_for('create_course') }}">
+                                <i class="fas fa-plus-circle"></i> Create Course
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'manage_links' %}active{% endif %}"
+                               href="{{ url_for('manage_links') }}">
+                                <i class="fas fa-link"></i> Manage Links
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'generate_student_invite' %}active{% endif %}"
+                               href="{{ url_for('generate_student_invite') }}">
+                                <i class="fas fa-ticket-alt"></i> Student Invite
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'mark_attendance' %}active{% endif %}"
+                               href="{{ url_for('mark_attendance') }}">
+                                <i class="fas fa-check-circle"></i> Mark Attendance
+                            </a>
+                        </li>
+                        <!-- <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'search_students_page' %}active{% endif %}"
+                               href="{{ url_for('search_students_page') }}">
+                                <i class="fas fa-search"></i> Search Students
+                            </a>
+                        </li> -->
+                        {% endif %}
+
+                        <!-- ADMIN NAVIGATION -->
+                        {% if session.get('user_role') == 'admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}"
+                               href="{{ url_for('admin_dashboard') }}">
+                                <i class="fas fa-chart-pie"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {% if request.endpoint in ['manage_users', 'manage_invites', 'generate_invite', 'list_courses'] %}active{% endif %}" 
+                               href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-shield-alt"></i> Admin
+                                {% if pending_count is defined and pending_count > 0 %}
+                                <span class="badge bg-danger badge-pulse">{{ pending_count }}</span>
+                                {% endif %}
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                                <li>
+                                    <a class="dropdown-item {% if request.endpoint == 'manage_users' %}active{% endif %}" 
+                                       href="{{ url_for('manage_users') }}">
+                                        <i class="fas fa-users-cog"></i> Manage Users
+                                        {% if pending_count is defined and pending_count > 0 %}
+                                        <span class="badge bg-danger ms-1">{{ pending_count }}</span>
+                                        {% endif %}
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if request.endpoint == 'manage_invites' %}active{% endif %}" 
+                                       href="{{ url_for('manage_invites') }}">
+                                        <i class="fas fa-ticket-alt"></i> Manage Invites
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if request.endpoint == 'generate_invite' %}active{% endif %}" 
+                                       href="{{ url_for('generate_invite') }}">
+                                        <i class="fas fa-plus-circle"></i> Generate Invite
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if request.endpoint == 'list_courses' %}active{% endif %}" 
+                                       href="{{ url_for('list_courses') }}">
+                                        <i class="fas fa-book"></i> All Courses
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if request.endpoint == 'enroll' %}active{% endif %}" 
+                                       href="{{ url_for('enroll') }}">
+                                        <i class="fas fa-user-plus"></i> Enroll Student
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item {% if request.endpoint == 'search_students_page' %}active{% endif %}" 
+                                       href="{{ url_for('search_students_page') }}">
+                                        <i class="fas fa-search"></i> Search Students
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        {% endif %}
+
+                        <!-- COMMON LINKS FOR TEACHERS & ADMIN -->
+                        {% if session.get('user_role') in ['teacher', 'admin'] %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'search_students_page' %}active{% endif %}"
+                               href="{{ url_for('search_students_page') }}">
+                                <i class="fas fa-search"></i> Search Students
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('camera_test') }}">
+                                <i class="fas fa-camera"></i> Camera Test
+                            </a>
+                        </li>
+
+                    {% else %}
+                        <!-- PUBLIC LINKS -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'home' %}active{% endif %}"
+                               href="{{ url_for('home') }}">
+                                <i class="fas fa-home"></i> Home
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'login' %}active{% endif %}"
+                               href="{{ url_for('login') }}">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'register' %}active{% endif %}"
+                               href="{{ url_for('register') }}">
+                                <i class="fas fa-user-plus"></i> Register
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category in ['success', 'danger', 'warning', 'info'] else 'info' }}
+                                    alert-dismissible fade show"
+                             role="alert">
+                            <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                            {{ message|safe }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <footer class="footer">
+        <p>&copy; {{ now.year if now is defined else '2026' }} Facial Recognition Attendance System | All Rights Reserved</p>
+        <small class="text-white-50">
+            <i class="fas fa-shield-alt"></i> Secure System | 
+            <i class="fas fa-users"></i> Role-Based Access Control
+        </small>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JS -->
+    {% if config.get('USE_CUSTOM_JS', True) %}
+        <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    {% endif %}
+
+    <!-- Global JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-dismiss alerts after 5 seconds
+            setTimeout(function() {
+                const alerts = document.querySelectorAll('.alert');
+                alerts.forEach(function(alert) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                });
+            }, 5000);
+        });
+
+        // Show/Hide Loading Spinner
+        function showLoading() {
+            const spinner = document.getElementById('loadingSpinner');
+            if (spinner) {
+                spinner.classList.add('show');
+            }
+        }
+
+        function hideLoading() {
+            const spinner = document.getElementById('loadingSpinner');
+            if (spinner) {
+                spinner.classList.remove('show');
+            }
+        }
+    </script>
+
+    <!-- Loading Spinner -->
+    <div class="spinner-overlay" id="loadingSpinner">
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

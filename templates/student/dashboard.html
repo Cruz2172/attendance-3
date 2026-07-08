@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard - FaceAttend{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Welcome Card */
+    .welcome-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 2.5rem;
+        color: white;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .welcome-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 300px;
+        height: 300px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 50%;
+    }
+    .welcome-card h2 {
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 1;
+    }
+    .welcome-card p {
+        opacity: 0.9;
+        margin-bottom: 0;
+        position: relative;
+        z-index: 1;
+    }
+    .welcome-card .status-badge {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1.5rem;
+        border-radius: 50px;
+        display: inline-block;
+        font-weight: 600;
+        position: relative;
+        z-index: 1;
+    }
+    .welcome-card .status-badge.enrolled {
+        background: #28a745;
+    }
+    .welcome-card .status-badge.not-enrolled {
+        background: #ffc107;
+        color: #333;
+    }
+
+    /* Enrollment Form */
+    .enrollment-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 2px 20px rgba(0,0,0,0.05);
+        border: 1px solid #eaecf4;
+    }
+    .enrollment-card .card-title {
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f8f9fc;
+    }
+    .enrollment-card .card-title i {
+        color: #667eea;
+    }
+    .enrollment-card .form-label {
+        font-weight: 600;
+        color: #4a5568;
+        font-size: 0.9rem;
+    }
+    .enrollment-card .form-control,
+    .enrollment-card .form-select {
+        border-radius: 10px;
+        border: 2px solid #eaecf4;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+    }
+    .enrollment-card .form-control:focus,
+    .enrollment-card .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+    }
+    .enrollment-card .form-control[readonly] {
+        background-color: #f8f9fc;
+    }
+    .enrollment-card .form-text {
+        color: #858796;
+        font-size: 0.8rem;
+    }
+
+    /* Camera Section */
+    .camera-section {
+        background: #f8f9fc;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+        border: 2px dashed #eaecf4;
+    }
+    .camera-section .camera-title {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
+    }
+    .camera-section .camera-title i {
+        color: #667eea;
+    }
+    .camera-section .camera-subtitle {
+        color: #858796;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+    .video-container {
+        position: relative;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .video-container video {
+        width: 100%;
+        display: none;
+        max-height: 400px;
+    }
+    .video-container .camera-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #858796;
+        padding: 2rem;
+    }
+    .video-container .camera-placeholder i {
+        font-size: 4rem;
+        color: #dddfeb;
+        margin-bottom: 1rem;
+    }
+    .video-container .camera-placeholder p {
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+    }
+    .video-container .camera-placeholder small {
+        color: #b7b9cc;
+    }
+    .video-container .camera-loading {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+    .video-container .camera-loading .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .camera-controls {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+    .camera-controls .btn {
+        border-radius: 50px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .camera-controls .btn i {
+        margin-right: 0.5rem;
+    }
+
+    .captured-preview {
+        margin-top: 1rem;
+        text-align: center;
+        display: none;
+    }
+    .captured-preview.show {
+        display: block;
+    }
+    .captured-preview img {
+        max-width: 200px;
+        border-radius: 12px;
+        border: 3px solid #28a745;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .captured-preview .preview-label {
+        color: #28a745;
+        font-weight: 600;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    #captureStatus {
+        margin-top: 0.75rem;
+    }
+    #captureStatus .alert {
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+
+    /* Submit Button */
+    .btn-submit {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 0.875rem 2rem;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        width: 100%;
+        transition: all 0.3s ease;
+        margin-top: 1.5rem;
+    }
+    .btn-submit:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+    .btn-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* Info Cards */
+    .info-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 20px rgba(0,0,0,0.05);
+        border: 1px solid #eaecf4;
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+    .info-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+    }
+    .info-card .info-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .info-card h6 {
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
+    }
+    .info-card p {
+        color: #718096;
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .welcome-card {
+            padding: 1.5rem;
+        }
+        .welcome-card h2 {
+            font-size: 1.5rem;
+        }
+        .enrollment-card {
+            padding: 1.5rem;
+        }
+        .camera-controls .btn {
+            flex: 1;
+            min-width: 120px;
+        }
+        .info-card {
+            margin-bottom: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Main Content - Enrollment Form -->
+        <div class="col-lg-8 mx-auto">
+            <!-- Welcome Card -->
+            <div class="welcome-card">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2><i class="fas fa-user-graduate me-2"></i>Welcome, {{ user.fullname }}!</h2>
+                        <p>Complete your registration by enrolling your face. This will allow you to mark attendance using facial recognition.</p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <span class="status-badge {% if has_face_enrolled %}enrolled{% else %}not-enrolled{% endif %}">
+                            <i class="fas fa-{% if has_face_enrolled %}check-circle{% else %}exclamation-circle{% endif %} me-1"></i>
+                            {% if has_face_enrolled %}Face Enrolled{% else %}Face Not Enrolled{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enrollment Form -->
+            <div class="enrollment-card">
+                <h5 class="card-title">
+                    <i class="fas fa-user-plus me-2"></i>Student Registration & Face Enrollment
+                </h5>
+                <p class="text-muted small mb-4">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Fill in your details and capture your face to complete enrollment.
+                    {% if invite_code %}
+                        <br><strong>Invite Code:</strong> <code>{{ invite_code }}</code>
+                    {% endif %}
+                </p>
+
+                <form id="enrollForm" method="POST" action="{{ url_for('enroll') }}" enctype="multipart/form-data">
+                    <!-- Hidden field for face data -->
+                    <input type="hidden" name="face_data" id="face_data">
+                    <!-- Hidden field to track if from dashboard -->
+                    <input type="hidden" name="from_dashboard" value="true">
+                    <!-- Hidden field for invite code -->
+                    {% if invite_code %}
+                        <input type="hidden" name="invite_code" value="{{ invite_code }}">
+                    {% endif %}
+
+                    <div class="row g-3">
+                        <!-- Level Dropdown -->
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="fas fa-layer-group text-primary me-1"></i>Level
+                            </label>
+                            <select name="level" id="level" class="form-select" required>
+                                <option value="">Select Level</option>
+                                <option value="100">100 Level</option>
+                                <option value="200">200 Level</option>
+                                <option value="300">300 Level</option>
+                                <option value="400">400 Level</option>
+                                <option value="500">500 Level</option>
+                                <option value="600">600 Level</option>
+                                <option value="700">700 Level</option>
+                            </select>
+                        </div>
+
+                        <!-- Full Name -->
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="fas fa-user text-primary me-1"></i>Full Name
+                            </label>
+                            <input type="text" name="fullname" class="form-control" 
+                                   value="{{ user.fullname }}" placeholder="Enter your full name" required>
+                        </div>
+
+                        <!-- Student ID / Reg Number -->
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="fas fa-id-card text-primary me-1"></i>Student ID / Registration Number
+                            </label>
+                            <input type="text" name="student_id" class="form-control" 
+                                   placeholder="e.g., STU001 or 2024/12345" required>
+                            <div class="form-text">Enter your unique student identification number.</div>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="fas fa-envelope text-primary me-1"></i>Email Address
+                            </label>
+                            <input type="email" name="email" class="form-control" 
+                                   value="{{ user.email }}" readonly required>
+                            <div class="form-text">Your email is linked to your account and cannot be changed.</div>
+                        </div>
+
+                        <!-- Department / Program - TEXT INPUT (Updated) -->
+                        <div class="col-md-12">
+                            <label class="form-label">
+                                <i class="fas fa-building text-primary me-1"></i>Department / Program
+                            </label>
+                            <input type="text" name="course" id="department" class="form-control" 
+                                   placeholder="Enter your department or program (e.g., Computer Science, Engineering, Medicine, etc.)" 
+                                   required>
+                            <div class="form-text">Enter department </div>
+                        </div>
+                    </div>
+
+                    <!-- Camera Section -->
+                    <div class="camera-section">
+                        <div class="camera-title">
+                            <i class="fas fa-camera me-2"></i>Face Capture
+                        </div>
+                        <p class="camera-subtitle">
+                            Please capture a clear photo of your face for attendance verification.
+                            Make sure you are in good lighting and looking directly at the camera.
+                        </p>
+
+                        <div class="video-container">
+                            <!-- Video Element -->
+                            <video id="enrollVideo" autoplay style="display:none;"></video>
+                            <canvas id="enrollCanvas" style="display:none;"></canvas>
+
+                            <!-- Camera Placeholder -->
+                            <div id="videoPlaceholder" class="camera-placeholder">
+                                <i class="fas fa-camera"></i>
+                                <p>Camera not started</p>
+                                <small>Click "Start Camera" to begin</small>
+                            </div>
+
+                            <!-- Camera Loading -->
+                            <div id="cameraLoading" class="camera-loading">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Accessing camera...</p>
+                            </div>
+
+                            <!-- Capture Status -->
+                            <div id="captureStatus" class="mt-2"></div>
+                        </div>
+
+                        <!-- Camera Controls -->
+                        <div class="camera-controls">
+                            <button type="button" id="startCameraBtn" class="btn btn-primary">
+                                <i class="fas fa-play"></i> Start Camera
+                            </button>
+                            <button type="button" id="captureBtn" class="btn btn-success" disabled>
+                                <i class="fas fa-camera"></i> Capture Face
+                            </button>
+                            <button type="button" id="stopCameraBtn" class="btn btn-danger" disabled>
+                                <i class="fas fa-stop"></i> Stop Camera
+                            </button>
+                            <button type="button" id="resetBtn" class="btn btn-warning" disabled>
+                                <i class="fas fa-undo"></i> Reset
+                            </button>
+                        </div>
+
+                        <!-- Captured Preview -->
+                        <div id="capturedPreview" class="captured-preview">
+                            <div class="preview-label">
+                                <i class="fas fa-check-circle text-success"></i> Face Captured!
+                            </div>
+                            <img id="capturedImage" src="" alt="Captured Face">
+                            <p class="text-muted small mt-1">Click "Enroll Student" to complete registration.</p>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="submitBtn" class="btn-submit" disabled>
+                        <i class="fas fa-user-check me-2"></i>Enroll Student
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Info Cards -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="info-card text-center">
+                <div class="info-icon mx-auto">
+                    <i class="fas fa-link"></i>
+                </div>
+                <h6>Teacher Invite</h6>
+                <p>Register using the link provided by your teacher to get enrolled in your courses.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="info-card text-center">
+                <div class="info-icon mx-auto">
+                    <i class="fas fa-face-smile"></i>
+                </div>
+                <h6>Face Enrollment</h6>
+                <p>Capture your face once and use it for all your attendance needs going forward.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="info-card text-center">
+                <div class="info-icon mx-auto">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h6>Quick Attendance</h6>
+                <p>Once enrolled, mark attendance in seconds with just a glance at the camera.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get elements
+    const video = document.getElementById('enrollVideo');
+    const canvas = document.getElementById('enrollCanvas');
+    const startBtn = document.getElementById('startCameraBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const stopBtn = document.getElementById('stopCameraBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const faceDataInput = document.getElementById('face_data');
+    const videoPlaceholder = document.getElementById('videoPlaceholder');
+    const cameraLoading = document.getElementById('cameraLoading');
+    const captureStatus = document.getElementById('captureStatus');
+    const capturedPreview = document.getElementById('capturedPreview');
+    const capturedImage = document.getElementById('capturedImage');
+    const form = document.getElementById('enrollForm');
+
+    let stream = null;
+    let isRunning = false;
+    let isCaptured = false;
+
+    // Check camera support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        captureStatus.innerHTML = '<div class="alert alert-danger">Camera not supported in this browser</div>';
+        startBtn.disabled = true;
+        return;
+    }
+
+    // Start Camera
+    startBtn.addEventListener('click', function() {
+        isCaptured = false;
+        isRunning = false;
+        captureBtn.disabled = true;
+        stopBtn.disabled = true;
+        resetBtn.disabled = true;
+        submitBtn.disabled = true;
+        capturedPreview.classList.remove('show');
+        
+        captureStatus.innerHTML = '<div class="alert alert-info">Requesting camera access...</div>';
+        startBtn.disabled = true;
+        cameraLoading.style.display = 'block';
+        videoPlaceholder.style.display = 'none';
+
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'user',
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            },
+            audio: false
+        })
+        .then(function(mediaStream) {
+            stream = mediaStream;
+            video.srcObject = stream;
+            
+            video.onloadedmetadata = function() {
+                video.play()
+                    .then(function() {
+                        video.style.display = 'block';
+                        videoPlaceholder.style.display = 'none';
+                        cameraLoading.style.display = 'none';
+                        
+                        isRunning = true;
+                        captureBtn.disabled = false;
+                        stopBtn.disabled = false;
+                        startBtn.disabled = true;
+                        resetBtn.disabled = true;
+                        
+                        captureStatus.innerHTML = '<div class="alert alert-success">Camera ready! Click "Capture Face" to take a photo.</div>';
+                    })
+                    .catch(function(err) {
+                        console.error('Play error:', err);
+                        captureStatus.innerHTML = '<div class="alert alert-danger">Error playing video stream</div>';
+                        startBtn.disabled = false;
+                    });
+            };
+            
+            video.onerror = function(err) {
+                console.error('Video error:', err);
+                captureStatus.innerHTML = '<div class="alert alert-danger">Video error occurred</div>';
+                startBtn.disabled = false;
+            };
+        })
+        .catch(function(error) {
+            console.error('Camera error:', error);
+            cameraLoading.style.display = 'none';
+            videoPlaceholder.style.display = 'block';
+            startBtn.disabled = false;
+            
+            let errorMsg = 'Camera error: ';
+            if (error.name === 'NotAllowedError') {
+                errorMsg += 'Please allow camera access in your browser settings.';
+            } else if (error.name === 'NotFoundError') {
+                errorMsg += 'No camera found on this device.';
+            } else if (error.name === 'NotReadableError') {
+                errorMsg += 'Camera is in use by another application.';
+            } else {
+                errorMsg += error.message;
+            }
+            
+            captureStatus.innerHTML = `<div class="alert alert-danger">${errorMsg}</div>`;
+        });
+    });
+
+    // Capture Face
+    captureBtn.addEventListener('click', function() {
+        if (!isRunning || !stream) {
+            captureStatus.innerHTML = '<div class="alert alert-warning">Camera is not running. Please start camera first.</div>';
+            return;
+        }
+
+        if (video.readyState < 2 || video.videoWidth === 0) {
+            captureStatus.innerHTML = '<div class="alert alert-warning">Camera not ready. Please wait.</div>';
+            return;
+        }
+
+        const context = canvas.getContext('2d');
+        const width = video.videoWidth || 640;
+        const height = video.videoHeight || 480;
+        
+        canvas.width = width;
+        canvas.height = height;
+        context.drawImage(video, 0, 0, width, height);
+        
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        
+        if (imageData && imageData.length > 1000) {
+            faceDataInput.value = imageData;
+            isCaptured = true;
+            
+            // Show preview
+            capturedImage.src = imageData;
+            capturedPreview.classList.add('show');
+            
+            captureStatus.innerHTML = '<div class="alert alert-success">Face captured successfully! Click "Enroll Student" to complete registration.</div>';
+            
+            submitBtn.disabled = false;
+            captureBtn.disabled = true;
+            resetBtn.disabled = false;
+            stopBtn.disabled = true;
+        } else {
+            captureStatus.innerHTML = '<div class="alert alert-danger">Failed to capture image. Please try again.</div>';
+        }
+    });
+
+    // Stop Camera
+    stopBtn.addEventListener('click', function() {
+        if (stream) {
+            stream.getTracks().forEach(function(track) {
+                track.stop();
+            });
+            stream = null;
+            video.srcObject = null;
+            video.style.display = 'none';
+            videoPlaceholder.style.display = 'block';
+            
+            isRunning = false;
+            captureBtn.disabled = true;
+            stopBtn.disabled = true;
+            startBtn.disabled = false;
+            resetBtn.disabled = true;
+            
+            captureStatus.innerHTML = '<div class="alert alert-info">Camera stopped.</div>';
+        }
+    });
+
+    // Reset
+    resetBtn.addEventListener('click', function() {
+        faceDataInput.value = '';
+        isCaptured = false;
+        capturedPreview.classList.remove('show');
+        submitBtn.disabled = true;
+        captureBtn.disabled = false;
+        resetBtn.disabled = true;
+        stopBtn.disabled = false;
+        captureStatus.innerHTML = '<div class="alert alert-info">Reset. Click "Capture Face" to retake.</div>';
+    });
+
+    // Form Submit
+    form.addEventListener('submit', function(e) {
+        if (!isCaptured || !faceDataInput.value || faceDataInput.value.length < 1000) {
+            e.preventDefault();
+            captureStatus.innerHTML = '<div class="alert alert-danger">Please capture a face photo before enrolling.</div>';
+            return false;
+        }
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Enrolling...';
+        
+        return true;
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+        if (stream) {
+            stream.getTracks().forEach(function(track) {
+                track.stop();
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Camera Test{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <h2>Camera Test</h2>
+                
+                <button id="testBtn" class="btn btn-primary mb-3">Test Camera</button>
+                
+                <div id="status" class="alert alert-info">Click the button to test</div>
+                
+                <video id="testVideo" style="width:100%; background: #000; border-radius: 10px;" autoplay playsinline></video>
+                
+                <button id="captureTestBtn" class="btn btn-success mt-3" disabled>Capture Photo</button>
+                
+                <div id="result" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Camera test page loaded');
+    
+    const video = document.getElementById('testVideo');
+    const testBtn = document.getElementById('testBtn');
+    const captureBtn = document.getElementById('captureTestBtn');
+    const status = document.getElementById('status');
+    const result = document.getElementById('result');
+    
+    let stream = null;
+    
+    testBtn.addEventListener('click', function() {
+        console.log('Test button clicked');
+        status.className = 'alert alert-info';
+        status.textContent = 'Requesting camera...';
+        testBtn.disabled = true;
+        
+        // Simplified camera request
+        navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'user' },
+            audio: false 
+        })
+        .then(function(mediaStream) {
+            console.log('✅ Camera access granted!');
+            stream = mediaStream;
+            video.srcObject = stream;
+            
+            video.onloadedmetadata = function() {
+                console.log('Video loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
+                video.play()
+                    .then(function() {
+                        console.log('Video playing');
+                        status.className = 'alert alert-success';
+                        status.textContent = '✅ Camera is working!';
+                        captureBtn.disabled = false;
+                        testBtn.textContent = 'Restart Camera';
+                        testBtn.disabled = false;
+                    })
+                    .catch(function(err) {
+                        console.error('Play error:', err);
+                        status.className = 'alert alert-danger';
+                        status.textContent = 'Error playing video: ' + err.message;
+                        testBtn.disabled = false;
+                    });
+            };
+            
+            video.onerror = function(err) {
+                console.error('Video error:', err);
+                status.className = 'alert alert-danger';
+                status.textContent = 'Video error occurred';
+                testBtn.disabled = false;
+            };
+        })
+        .catch(function(error) {
+            console.error('❌ Camera error:', error);
+            let msg = 'Camera error: ';
+            if (error.name === 'NotAllowedError') {
+                msg += 'Please allow camera access in your browser settings.';
+            } else if (error.name === 'NotFoundError') {
+                msg += 'No camera found on this device.';
+            } else if (error.name === 'NotReadableError') {
+                msg += 'Camera is in use by another application.';
+            } else {
+                msg += error.message;
+            }
+            status.className = 'alert alert-danger';
+            status.textContent = msg;
+            testBtn.disabled = false;
+        });
+    });
+    
+    captureBtn.addEventListener('click', function() {
+        if (!stream || !video || video.readyState < 2) {
+            status.className = 'alert alert-warning';
+            status.textContent = 'Camera not ready';
+            return;
+        }
+        
+        // Create canvas and capture
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        
+        // Show captured image
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL('image/jpeg');
+        img.style.maxWidth = '100%';
+        img.style.borderRadius = '10px';
+        img.style.border = '3px solid green';
+        
+        result.innerHTML = '<h5>Captured:</h5>';
+        result.appendChild(img);
+        
+        status.className = 'alert alert-success';
+        status.textContent = '✅ Photo captured!';
+    });
+});
+</script>
+{% endblock %}

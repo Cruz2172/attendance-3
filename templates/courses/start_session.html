@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Start Attendance Session{% endblock %}
+
+{% block extra_css %}
+<style>
+    .session-header {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+        text-align: center;
+    }
+    .session-header h2 {
+        font-weight: 700;
+    }
+    .course-info {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+    }
+    .course-info .label {
+        font-weight: 600;
+        color: #495057;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Header -->
+        <div class="session-header">
+            <h2><i class="fas fa-play-circle"></i> Start Attendance Session</h2>
+            <p class="mb-0">Create a new attendance session for your course</p>
+        </div>
+
+        <!-- Course Info -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="course-info">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="label">📚 Course Code</div>
+                            <div class="fw-bold fs-5">{{ course.course_code }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="label">📖 Course Name</div>
+                            <div class="fw-bold">{{ course.course_name }}</div>
+                        </div>
+                        <div class="col-md-6 mt-2">
+                            <div class="label">👨‍🏫 Teacher</div>
+                            <div>{{ course.get_teacher_name() }}</div>
+                        </div>
+                        <div class="col-md-6 mt-2">
+                            <div class="label">📊 Enrolled Students</div>
+                            <div>{{ course.get_enrolled_count() }} students</div>
+                        </div>
+                        <div class="col-12 mt-2">
+                            <div class="label">📅 Schedule</div>
+                            <div>{{ course.schedule or 'Not set' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Start Session Form -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="mb-3"><i class="fas fa-cog text-primary"></i> Session Details</h5>
+
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label for="topic" class="form-label fw-bold">Session Topic</label>
+                        <input type="text" class="form-control" id="topic" name="topic" 
+                               placeholder="e.g., Chapter 3 - Data Structures" required>
+                        <small class="text-muted">Enter the topic or subject for this session</small>
+                    </div>
+
+                    {#
+                        FIX: removed the fake client-side token preview that used
+                        to live here. It generated a random string in the browser
+                        (and regenerated it every 2 seconds!) that had zero
+                        connection to the real session_token the server actually
+                        creates on submit -- a teacher glancing at this page could
+                        easily read out the wrong code to their class. The real
+                        token is only ever shown on the next page (view_session.html),
+                        generated server-side, after the session actually exists.
+                    #}
+                    <div class="alert alert-secondary">
+                        <i class="fas fa-info-circle"></i>
+                        A unique session token will be generated automatically once you start the session below.
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>How it works:</strong>
+                        <ol class="mb-0 mt-2">
+                            <li>Students go to <strong>Mark Attendance</strong> page</li>
+                            <li>They select this course and enter the session token</li>
+                            <li>They capture their face for verification</li>
+                            <li>Attendance is automatically recorded</li>
+                        </ol>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Note:</strong> Only one active session is allowed per course at a time.
+                        End the current session before starting a new one.
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-play"></i> Start Session
+                        </button>
+                        <a href="{{ url_for('view_course', course_id=course.id) }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {#
+            FIX: removed the "there is already an active session" warning block
+            that used to be here. It was unreachable dead code -- the route
+            (start_attendance_session) already checks for an active session
+            and redirects away BEFORE this template ever renders, so this
+            condition could never actually be true by the time Jinja saw it.
+        #}
+    </div>
+</div>
+{% endblock %}

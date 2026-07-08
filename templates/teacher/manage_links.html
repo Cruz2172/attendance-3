@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Enrollment Links{% endblock %}
+
+{% block extra_css %}
+<style>
+    .link-card {
+        border-left: 4px solid #28a745;
+        margin-bottom: 15px;
+    }
+    .link-card.expired {
+        border-left-color: #dc3545;
+        opacity: 0.7;
+    }
+    .link-card .token-code {
+        font-family: monospace;
+        font-size: 18px;
+        letter-spacing: 3px;
+        font-weight: 700;
+    }
+    .usage-bar {
+        height: 6px;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-link"></i> Enrollment Links</h2>
+                <p class="text-muted">Manage all enrollment tokens for your courses</p>
+            </div>
+            <div>
+                <a href="{{ url_for('list_courses') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left"></i> Back to Courses
+                </a>
+            </div>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Generate New Token -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5><i class="fas fa-plus-circle"></i> Generate New Token</h5>
+                <form method="POST" action="{{ url_for('generate_course_token_teacher') }}" class="row g-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="col-md-4">
+                        <label for="course_id" class="form-label">Select Course</label>
+                        <select class="form-select" id="course_id" name="course_id" required>
+                            <option value="">Choose a course...</option>
+                            {% for course in teacher_courses %}
+                            <option value="{{ course.id }}">{{ course.course_code }} - {{ course.course_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label for="max_uses" class="form-label">Max Uses</label>
+                        <input type="number" class="form-control" id="max_uses" name="max_uses" value="50" min="1">
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label for="expires_days" class="form-label">Expires (Days)</label>
+                        <input type="number" class="form-control" id="expires_days" name="expires_days" value="7" min="1">
+                    </div>
+                    
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-share-alt"></i> Generate
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Active Links -->
+        <h4 class="mb-3">Active Links</h4>
+        {% if active_links %}
+            {% for link in active_links %}
+            <div class="card link-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-2">
+                            <div class="token-code">{{ link.token_code }}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div><strong>{{ link.course.course_code }}</strong></div>
+                            <div class="text-muted small">{{ link.course.course_name }}</div>
+                        </div>
+                        <div class="col-md-2">
+                            <div>Uses: {{ link.used_count }}/{{ link.max_uses }}</div>
+                            <div class="progress usage-bar">
+                                <div class="progress-bar {{ 'bg-success' if link.used_count/link.max_uses < 0.8 else 'bg-warning' if link.used_count/link.max_uses < 0.95 else 'bg-danger' }}" 
+                                     style="width: {{ (link.used_count/link.max_uses)*100 }}%">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-muted small">
+                                <i class="fas fa-clock"></i> Expires: {{ link.expires_at.strftime('%Y-%m-%d') }}
+                            </div>
+                            <div class="text-muted small">
+                                <i class="fas fa-calendar-alt"></i> Created: {{ link.created_at.strftime('%Y-%m-%d') }}
+                            </div>
+                        </div>
+                        <div class="col-md-2 text-end">
+                            <button class="btn btn-sm btn-outline-primary copy-link-btn" 
+                                    data-token="{{ link.token_code }}"
+                                    data-course="{{ link.course.course_code }}">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">No active enrollment links.</div>
+        {% endif %}
+
+        <!-- Expired Links -->
+        {% if expired_links %}
+        <h4 class="mb-3 mt-4">Expired Links</h4>
+        {% for link in expired_links %}
+        <div class="card link-card expired">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-2">
+                        <div class="token-code text-muted">{{ link.token_code }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div><strong>{{ link.course.course_code }}</strong></div>
+                        <div class="text-muted small">{{ link.course.course_name }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge bg-danger">Expired</span>
+                        <div class="text-muted small">
+                            Used: {{ link.used_count }}/{{ link.max_uses }}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted small">
+                            <i class="fas fa-clock"></i> Expired: {{ link.expires_at.strftime('%Y-%m-%d %H:%M') }}
+                        </div>
+                        <div class="text-muted small">
+                            <i class="fas fa-calendar-alt"></i> Created: {{ link.created_at.strftime('%Y-%m-%d') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- No Links -->
+        {% if not active_links and not expired_links %}
+        <div class="alert alert-info text-center py-5">
+            <h5><i class="fas fa-link"></i> No enrollment links</h5>
+            <p>You haven't created any enrollment links yet. Use the form above to generate one.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Copy token functionality
+    document.querySelectorAll('.copy-link-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const token = this.dataset.token;
+            const course = this.dataset.course;
+            const link = window.location.origin + '/courses/enroll/' + token;
+            
+            navigator.clipboard.writeText(link).then(() => {
+                // Show success feedback
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                }, 2000);
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Face Attendance{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 style="color: #667eea;">
+                        <i class="fas fa-chart-pie"></i> Dashboard
+                    </h2>
+                    <div>
+                        <span class="badge bg-primary me-2">
+                            <i class="fas fa-user"></i> {{ session.user_name }}
+                        </span>
+                        <span class="badge {% if session.user_role == 'admin' %}bg-danger{% elif session.user_role == 'teacher' %}bg-primary{% else %}bg-success{% endif %}">
+                            <i class="fas fa-user-tag"></i> {{ session.user_role|capitalize }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-subtitle mb-2 text-white-50">Total Students</h6>
+                                        <h2 class="mb-0 stat-total">{{ total_students }}</h2>
+                                    </div>
+                                    <i class="fas fa-users fs-1 opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-subtitle mb-2 text-white-50">Present Today</h6>
+                                        <h2 class="mb-0 stat-present">{{ present_today }}</h2>
+                                    </div>
+                                    <i class="fas fa-check-circle fs-1 opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-subtitle mb-2 text-white-50">Absent Today</h6>
+                                        <h2 class="mb-0 stat-absent">{{ absent_today }}</h2>
+                                    </div>
+                                    <i class="fas fa-times-circle fs-1 opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="card-subtitle mb-2 text-white-50">Attendance Rate</h6>
+                                        <h2 class="mb-0 stat-rate">{{ attendance_rate }}%</h2>
+                                    </div>
+                                    <i class="fas fa-percentage fs-1 opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Quick Actions -->
+                {% if session.user_role == 'admin' %}
+                <div class="row mt-4 mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-shield-alt"></i> Admin Quick Actions
+                                    </h5>
+                                    {% if pending_count > 0 %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-clock"></i> {{ pending_count }} Pending Approvals
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <a href="{{ url_for('manage_users') }}" class="btn btn-outline-primary w-100 py-3">
+                                            <i class="fas fa-users fa-2x d-block mb-2"></i>
+                                            Manage Users
+                                            {% if pending_count > 0 %}
+                                            <span class="badge bg-danger ms-1">{{ pending_count }}</span>
+                                            {% endif %}
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <a href="{{ url_for('generate_invite') }}" class="btn btn-outline-success w-100 py-3">
+                                            <i class="fas fa-ticket-alt fa-2x d-block mb-2"></i>
+                                            Generate Invite
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <a href="{{ url_for('manage_invites') }}" class="btn btn-outline-info w-100 py-3">
+                                            <i class="fas fa-list fa-2x d-block mb-2"></i>
+                                            Manage Invites
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <a href="{{ url_for('enroll') }}" class="btn btn-outline-warning w-100 py-3">
+                                            <i class="fas fa-user-plus fa-2x d-block mb-2"></i>
+                                            Enroll Student
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Teacher Quick Actions -->
+                {% if session.user_role == 'teacher' %}
+                <div class="row mt-4 mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-chalkboard-teacher"></i> Teacher Quick Actions
+                                    </h5>
+                                    {% if pending_enrollment_requests > 0 %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fas fa-clock"></i> {{ pending_enrollment_requests }} Pending Requests
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <a href="{{ url_for('mark_attendance') }}" class="btn btn-outline-success w-100 py-3">
+                                            <i class="fas fa-clipboard-check fa-2x d-block mb-2"></i>
+                                            Mark Attendance
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <a href="{{ url_for('enroll') }}" class="btn btn-outline-primary w-100 py-3">
+                                            <i class="fas fa-user-plus fa-2x d-block mb-2"></i>
+                                            Enroll Student
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <a href="{{ url_for('manage_enrollment_requests') }}" class="btn btn-outline-warning w-100 py-3">
+                                            <i class="fas fa-user-check fa-2x d-block mb-2"></i>
+                                            Enrollment Requests
+                                            {% if pending_enrollment_requests > 0 %}
+                                            <span class="badge bg-danger ms-1">{{ pending_enrollment_requests }}</span>
+                                            {% endif %}
+                                        </a>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <a href="{{ url_for('list_courses') }}" class="btn btn-outline-info w-100 py-3">
+                                            <i class="fas fa-book fa-2x d-block mb-2"></i>
+                                            My Courses
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Student Quick Actions -->
+                {% if session.user_role == 'student' %}
+                <div class="row mt-4 mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-user-graduate"></i> Student Quick Actions
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <a href="{{ url_for('browse_courses') }}" class="btn btn-outline-primary w-100 py-3">
+                                            <i class="fas fa-search fa-2x d-block mb-2"></i>
+                                            Browse Courses
+                                        </a>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <a href="{{ url_for('list_courses') }}" class="btn btn-outline-success w-100 py-3">
+                                            <i class="fas fa-book fa-2x d-block mb-2"></i>
+                                            My Courses
+                                        </a>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <a href="{{ url_for('mark_attendance') }}" class="btn btn-outline-warning w-100 py-3">
+                                            <i class="fas fa-clipboard-check fa-2x d-block mb-2"></i>
+                                            Mark Attendance
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Recent Attendance -->
+                <h4 class="mt-4">
+                    <i class="fas fa-history"></i> Recent Attendance Records
+                </h4>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in recent_attendance %}
+                            <tr>
+                                <td>
+                                    <i class="fas fa-user-circle text-primary"></i>
+                                    {{ record.student_name }}
+                                </td>
+                                <td>
+                                    <i class="fas fa-calendar-day"></i>
+                                    {{ record.date }}
+                                </td>
+                                <td>
+                                    <i class="fas fa-clock"></i>
+                                    {{ record.time }}
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle"></i> Present
+                                    </span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4">
+                                    <i class="fas fa-inbox fa-3x d-block text-muted mb-2"></i>
+                                    <span class="text-muted">No attendance records yet</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Quick Stats Footer -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Total Students</small>
+                                        <h5 class="mb-0">{{ total_students }}</h5>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Present Today</small>
+                                        <h5 class="mb-0 text-success">{{ present_today }}</h5>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Absent Today</small>
+                                        <h5 class="mb-0 text-danger">{{ absent_today }}</h5>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Attendance Rate</small>
+                                        <h5 class="mb-0 text-primary">{{ attendance_rate }}%</h5>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Enrollment Requests Notification (for teachers) -->
+                {% if session.user_role == 'teacher' and pending_enrollment_requests > 0 %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-bell fa-2x me-3"></i>
+                                <div>
+                                    <strong>⚠️ Enrollment Requests Pending!</strong>
+                                    You have <span class="badge bg-danger">{{ pending_enrollment_requests }}</span> 
+                                    student enrollment request(s) waiting for your approval.
+                                </div>
+                                <a href="{{ url_for('manage_enrollment_requests') }}" class="btn btn-sm btn-primary ms-auto">
+                                    View Requests <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Quick Enrollment Request Status (for students) -->
+                {% if session.user_role == 'student' %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        {% set pending_requests = [] %}
+                        {% for course in courses if course.id in requested_course_ids %}
+                            {% set _ = pending_requests.append(1) %}
+                        {% endfor %}
+                        
+                        {% if pending_requests|length > 0 %}
+                        <div class="alert alert-info">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-clock fa-2x me-3"></i>
+                                <div>
+                                    <strong>⏳ Pending Enrollment Requests!</strong>
+                                    You have <span class="badge bg-warning text-dark">{{ pending_requests|length }}</span> 
+                                    course enrollment request(s) waiting for teacher approval.
+                                </div>
+                                <a href="{{ url_for('browse_courses') }}" class="btn btn-sm btn-primary ms-auto">
+                                    Check Status <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Additional Info for Students: Course Enrollment Status -->
+                {% if session.user_role == 'student' %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-info-circle"></i> Enrollment Status
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="text-center">
+                                            <h5 class="text-primary">{{ enrolled_courses_count or 0 }}</h5>
+                                            <small class="text-muted">Active Enrollments</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="text-center">
+                                            <h5 class="text-warning">{{ pending_requests_count or 0 }}</h5>
+                                            <small class="text-muted">Pending Requests</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="text-center">
+                                            <h5 class="text-success">{{ completed_courses_count or 0 }}</h5>
+                                            <small class="text-muted">Completed Courses</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Custom styles for dashboard */
+    .stat-total, .stat-present, .stat-absent, .stat-rate {
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+    
+    .card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    
+    .btn-outline-primary, .btn-outline-success, .btn-outline-info, .btn-outline-warning {
+        transition: all 0.3s;
+        border-radius: 10px;
+    }
+    
+    .btn-outline-primary:hover, .btn-outline-success:hover, 
+    .btn-outline-info:hover, .btn-outline-warning:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(102, 126, 234, 0.05);
+    }
+    
+    .badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+    }
+    
+    .alert {
+        border-radius: 10px;
+    }
+    
+    .btn {
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}

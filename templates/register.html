@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Face Attendance{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-lg">
+            <div class="card-body p-5">
+                <h2 class="text-center mb-4" style="color: #667eea;">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </h2>
+                
+                <!-- Show if user came from invite link -->
+                {% if invite_code %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    You are registering with an invite code: <strong>{{ invite_code }}</strong>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('register') }}" id="registerForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                    <!-- Full Name -->
+                    <div class="mb-3">
+                        <label for="fullname" class="form-label fw-bold">
+                            <i class="fas fa-user"></i> Full Name
+                        </label>
+                        <input type="text" class="form-control" id="fullname" name="fullname" 
+                               placeholder="Enter your full name" required>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="mb-3">
+                        <label for="email" class="form-label fw-bold">
+                            <i class="fas fa-envelope"></i> Email Address
+                        </label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               placeholder="Enter your email" required>
+                        <small class="form-text text-muted">We'll never share your email with anyone else.</small>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="mb-3">
+                        <label for="password" class="form-label fw-bold">
+                            <i class="fas fa-lock"></i> Password
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="Min 6 characters" required minlength="6">
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div id="passwordStrength" class="mt-1"></div>
+                        <small class="form-text text-muted">Password must be at least 6 characters long.</small>
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label fw-bold">
+                            <i class="fas fa-check-circle"></i> Confirm Password
+                        </label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
+                               placeholder="Confirm your password" required>
+                        <div id="passwordMismatch" class="mt-1"></div>
+                    </div>
+
+                    <!-- Invite Code -->
+                    <div class="mb-3">
+                        <label for="invite_code" class="form-label fw-bold">
+                            <i class="fas fa-ticket-alt"></i> Invite Code <span class="text-muted">(Optional)</span>
+                        </label>
+                        <input type="text" class="form-control" id="invite_code" name="invite_code" 
+                               placeholder="Enter invite code if you have one"
+                               value="{{ invite_code if invite_code else '' }}">
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                <span id="inviteInfo">
+                                    {% if invite_code %}
+                                    <span class="text-success">You're using invite code: <strong>{{ invite_code }}</strong></span>
+                                    {% else %}
+                                    Leave blank to register as a student (needs admin approval)
+                                    {% endif %}
+                                </span>
+                            </small>
+                        </div>
+                        <div id="inviteStatus" class="mt-1"></div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-primary w-100 py-2" id="registerBtn">
+                        <i class="fas fa-user-plus"></i> Register
+                    </button>
+                </form>
+
+                <div class="text-center mt-4">
+                    <p class="mb-0">
+                        Already have an account? 
+                        <a href="{{ url_for('login') }}" style="color: #667eea; font-weight: 500;">
+                            <i class="fas fa-sign-in-alt"></i> Login here
+                        </a>
+                    </p>
+                </div>
+
+                <!-- Info Box -->
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h6 class="text-muted mb-2">
+                        <i class="fas fa-info-circle"></i> Registration Guide
+                    </h6>
+                    <ul class="small text-muted mb-0">
+                        <li><strong>Students:</strong> Register without an invite code. Your account will need admin approval.</li>
+                        <li><strong>Teachers:</strong> Use a teacher invite code to get auto-approved.</li>
+                        <li><strong>Admins:</strong> Use an admin invite code or contact your system administrator.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Password strength indicator colors */
+    .strength-weak { color: #dc3545; }
+    .strength-medium { color: #ffc107; }
+    .strength-strong { color: #28a745; }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        transition: transform 0.2s;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .card {
+        border: none;
+        border-radius: 15px;
+        background: white;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+    const passwordStrength = document.getElementById('passwordStrength');
+    const passwordMismatch = document.getElementById('passwordMismatch');
+    const togglePassword = document.getElementById('togglePassword');
+    const inviteCode = document.getElementById('invite_code');
+    const inviteStatus = document.getElementById('inviteStatus');
+    const registerBtn = document.getElementById('registerBtn');
+    const form = document.getElementById('registerForm');
+
+    // ─────────────────────────────────────────────
+    // Password Strength Checker
+    // ─────────────────────────────────────────────
+    password.addEventListener('input', function() {
+        const val = this.value;
+        let strength = '';
+        let color = '';
+        
+        if (val.length === 0) {
+            passwordStrength.innerHTML = '';
+            return;
+        }
+        
+        if (val.length < 6) {
+            strength = 'Weak - Minimum 6 characters required';
+            color = 'strength-weak';
+        } else if (val.length < 8) {
+            strength = 'Medium - Add more characters for better security';
+            color = 'strength-medium';
+        } else if (val.length >= 8 && /[A-Z]/.test(val) && /[0-9]/.test(val)) {
+            strength = 'Strong - Good password!';
+            color = 'strength-strong';
+        } else if (val.length >= 8) {
+            strength = 'Medium - Add uppercase letters and numbers for strength';
+            color = 'strength-medium';
+        } else {
+            strength = 'Weak';
+            color = 'strength-weak';
+        }
+        
+        passwordStrength.innerHTML = `<span class="${color}"><i class="fas fa-circle"></i> ${strength}</span>`;
+        checkPasswordMatch();
+    });
+
+    // ─────────────────────────────────────────────
+    // Password Match Check
+    // ─────────────────────────────────────────────
+    function checkPasswordMatch() {
+        const pass = password.value;
+        const confirm = confirmPassword.value;
+        
+        if (confirm.length === 0) {
+            passwordMismatch.innerHTML = '';
+            return;
+        }
+        
+        if (pass === confirm) {
+            passwordMismatch.innerHTML = '<span class="text-success"><i class="fas fa-check-circle"></i> Passwords match!</span>';
+            registerBtn.disabled = false;
+        } else {
+            passwordMismatch.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle"></i> Passwords do not match!</span>';
+            registerBtn.disabled = true;
+        }
+    }
+
+    confirmPassword.addEventListener('input', checkPasswordMatch);
+    password.addEventListener('input', checkPasswordMatch);
+
+    // ─────────────────────────────────────────────
+    // Toggle Password Visibility
+    // ─────────────────────────────────────────────
+    togglePassword.addEventListener('click', function() {
+        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+        password.setAttribute('type', type);
+        this.querySelector('i').classList.toggle('fa-eye');
+        this.querySelector('i').classList.toggle('fa-eye-slash');
+    });
+
+    // ─────────────────────────────────────────────
+    // Invite Code Validation (Real-time feedback)
+    // ─────────────────────────────────────────────
+    let inviteCheckTimeout;
+    inviteCode.addEventListener('input', function() {
+        const code = this.value.trim();
+        
+        // Clear previous timeout
+        clearTimeout(inviteCheckTimeout);
+        
+        if (code.length === 0) {
+            inviteStatus.innerHTML = '';
+            updateInviteInfo(null);
+            return;
+        }
+        
+        // Show checking status
+        inviteStatus.innerHTML = '<span class="text-muted"><i class="fas fa-spinner fa-spin"></i> Checking invite code...</span>';
+        
+        // Debounce the check
+        inviteCheckTimeout = setTimeout(function() {
+            if (code.length >= 4) {
+                checkInviteCode(code);
+            } else {
+                inviteStatus.innerHTML = '<span class="text-muted"><i class="fas fa-info-circle"></i> Enter full invite code</span>';
+            }
+        }, 500);
+    });
+
+    function checkInviteCode(code) {
+        fetch(`/admin/check_invite?code=${encodeURIComponent(code)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.valid) {
+                    inviteStatus.innerHTML = `
+                        <span class="text-success">
+                            <i class="fas fa-check-circle"></i> 
+                            Valid ${data.role} invite code!
+                            ${data.role === 'teacher' || data.role === 'admin' ? 
+                                ' You will be auto-approved!' : 
+                                ' You will need admin approval.'}
+                        </span>
+                    `;
+                    updateInviteInfo(data);
+                } else {
+                    inviteStatus.innerHTML = `
+                        <span class="text-danger">
+                            <i class="fas fa-times-circle"></i> 
+                            Invalid or expired invite code
+                        </span>
+                    `;
+                    updateInviteInfo(null);
+                }
+            })
+            .catch(() => {
+                inviteStatus.innerHTML = `
+                    <span class="text-warning">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        Could not validate invite code
+                    </span>
+                `;
+            });
+    }
+
+    function updateInviteInfo(data) {
+        const infoDiv = document.getElementById('inviteInfo');
+        if (data && data.valid) {
+            infoDiv.innerHTML = `
+                <span class="text-success">
+                    <strong>${data.role.toUpperCase()} invite code</strong> - 
+                    ${data.role === 'teacher' || data.role === 'admin' ? 
+                        '✅ Auto-approved!' : 
+                        '⏳ Needs admin approval'}
+                </span>
+            `;
+        } else {
+            infoDiv.innerHTML = `
+                <span class="text-muted">
+                    Leave blank to register as a student (needs admin approval)
+                </span>
+            `;
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // Form Validation Before Submit
+    // ─────────────────────────────────────────────
+    form.addEventListener('submit', function(e) {
+        const pass = password.value;
+        const confirm = confirmPassword.value;
+        
+        if (pass.length < 6) {
+            e.preventDefault();
+            alert('Password must be at least 6 characters long!');
+            return;
+        }
+        
+        if (pass !== confirm) {
+            e.preventDefault();
+            alert('Passwords do not match!');
+            return;
+        }
+        
+        // Show loading state
+        registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering...';
+        registerBtn.disabled = true;
+    });
+
+    // ─────────────────────────────────────────────
+    // Auto-fill invite code from URL parameter
+    // ─────────────────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeParam = urlParams.get('code');
+    if (codeParam) {
+        inviteCode.value = codeParam;
+        // Trigger validation
+        inviteCode.dispatchEvent(new Event('input'));
+    }
+});
+</script>
+{% endblock %}

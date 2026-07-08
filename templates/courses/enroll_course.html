@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Enroll in Course{% endblock %}
+
+{% block extra_css %}
+<style>
+    .enroll-header {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+        text-align: center;
+    }
+    .enroll-header h2 {
+        font-weight: 700;
+    }
+    .token-input {
+        font-size: 24px;
+        letter-spacing: 8px;
+        text-align: center;
+        font-family: monospace;
+        text-transform: uppercase;
+    }
+    .course-info-card {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 15px 0;
+    }
+    .course-info-card .label {
+        font-weight: 600;
+        color: #495057;
+    }
+    .token-preview {
+        background: #e9ecef;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        font-family: monospace;
+        font-size: 18px;
+        letter-spacing: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Header -->
+        <div class="enroll-header">
+            <h2><i class="fas fa-user-graduate"></i> Enroll in Course</h2>
+            <p class="mb-0">Enter the enrollment token provided by your teacher</p>
+        </div>
+
+        <!-- Course Info (if course is already known via token) -->
+        {% if course %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="course-info-card">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="label">📚 Course Code</div>
+                            <div class="fw-bold fs-4">{{ course.course_code }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="label">📖 Course Name</div>
+                            <div class="fw-bold">{{ course.course_name }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="label">👨‍🏫 Teacher</div>
+                            <div>{{ course.get_teacher_name() or 'Not assigned' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="label">📅 Schedule</div>
+                            <div>{{ course.schedule or 'Not set' }}</div>
+                        </div>
+                        <div class="col-12 mt-2">
+                            <div class="label">📝 Description</div>
+                            <div class="text-muted">{{ course.description or 'No description provided' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Info when no course is loaded -->
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> 
+            Enter the 8-character token code provided by your teacher. The token is usually shared in class or via email.
+        </div>
+        {% endif %}
+
+        <!-- Enrollment Form -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="mb-3"><i class="fas fa-key text-primary"></i> Enter Enrollment Token</h5>
+                <form method="POST" action="{{ url_for('enroll_with_token') }}">
+                    {{ csrf_token() }}
+                    
+                    <div class="mb-3">
+                        <label for="token_code" class="form-label fw-bold">Token Code</label>
+                        <input type="text" 
+                               class="form-control token-input" 
+                               id="token_code" 
+                               name="token_code" 
+                               placeholder="ABCD1234" 
+                               required
+                               maxlength="8"
+                               minlength="8"
+                               autofocus
+                               value="{{ request.form.get('token_code', '') }}">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            Enter the 8-character token provided by your teacher (case insensitive)
+                        </small>
+                        <div class="invalid-feedback">
+                            Token must be exactly 8 characters
+                        </div>
+                    </div>
+
+                    <!-- Token Preview -->
+                    <div class="token-preview mb-3" id="tokenPreview">
+                        <span class="text-muted">Token preview will appear here</span>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-check-circle"></i> Enroll in Course
+                        </button>
+                        <a href="{{ url_for('browse_courses') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Browse All Courses
+                        </a>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-home"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Info Alert -->
+        <div class="alert alert-info mt-3">
+            <i class="fas fa-info-circle"></i> 
+            <strong>Don't have a token?</strong> Ask your teacher to generate one for you. 
+            Teachers can create enrollment links that allow direct enrollment without approval.
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tokenInput = document.getElementById('token_code');
+    const tokenPreview = document.getElementById('tokenPreview');
+    
+    if (tokenInput) {
+        // Auto-uppercase and clean input
+        tokenInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+            // Remove any spaces or special characters
+            this.value = this.value.replace(/[^A-Z0-9]/g, '');
+            
+            // Update preview
+            const val = this.value;
+            if (val.length > 0) {
+                const formatted = val.padEnd(8, '▢');
+                tokenPreview.innerHTML = `<strong style="font-size:24px;letter-spacing:8px;">${formatted}</strong>`;
+            } else {
+                tokenPreview.innerHTML = '<span class="text-muted">Token preview will appear here</span>';
+            }
+        });
+        
+        // Auto-submit if token length reaches 8 (optional)
+        tokenInput.addEventListener('keyup', function(e) {
+            if (this.value.length === 8 && e.key !== 'Backspace' && e.key !== 'Delete') {
+                // Uncomment below to auto-submit
+                // this.closest('form').submit();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
