@@ -7,3 +7,4 @@ SQLAlchemy
 opencv-python
 numpy
 face-recognition
+gunicorn
