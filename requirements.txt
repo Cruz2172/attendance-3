@@ -4,7 +4,6 @@ Flask-SQLAlchemy
 Flask-WTF
 Werkzeug
 SQLAlchemy
+opencv-python
 numpy
-opencv-python-headless
-face_recognition
-gunicorn
+face-recognition
